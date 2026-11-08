@@ -2,7 +2,7 @@
 
 Prototype voor de controle op dossierinzage en toegangsrechten volgens NEN 7513, in de applicatie AccessGuard.
 
-**Demo:** https://koppe00.github.io/accessguard/
+**Demo:** https://koppe00.github.io/Accessguard/
 
 ## Wat het is
 - Eén HTML-bestand. Alle verwerking gebeurt in de browser; de pagina laadt geen bestanden van andere websites.
