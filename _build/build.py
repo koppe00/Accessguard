@@ -28,6 +28,7 @@ def page(path, title, desc, body, active=None, ld=None, crumbs=None):
 <html lang="nl">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{E(title)}</title>
 <meta name="description" content="{E(desc)}">
@@ -199,7 +200,7 @@ page("hoe-het-werkt/", "Hoe AccessGuard dossierinzage controleert · Klinq",
 {cta("../")}''', active="hoe-het-werkt/", ld=[APP], crumbs=[("Hoe het werkt","hoe-het-werkt/")])
 
 # ---------------- VEILIGHEID ----------------
-TR = [("Gegevensstroom en architectuur","ok","Verwerking in de browser; geen server voor jullie data."),
+TR = [("Slotbout (Content Security Policy)","ok","De applicatie verbiedt de browser elke verbinding naar buiten (connect-src 'none'). Zichtbaar in de broncode en getest in de app zelf."),("Gegevensstroom en architectuur","ok","Verwerking in de browser; geen server voor jullie data."),
  ("Netwerkgedrag","ok","Na het laden geen verbindingen nodig. Zelf te testen met de offline-test."),
  ("Versleuteling","ok","AES-256-GCM; sleutel via PBKDF2 (200.000 rondes); codes via HMAC-SHA-256; sleutels niet uitleesbaar."),
  ("Externe onderdelen","ok","Eén bestand, geen externe bibliotheken of lettertypen in de applicatie."),
@@ -223,6 +224,7 @@ page("veiligheid/", "Veiligheid en privacy van AccessGuard · Klinq",
 <div><h3>Wat Klinq nooit heeft</h3><ul class="checks nope"><li>Inzagelog, zorgcontacten of personeelslijst</li><li>Namen of nummers van patiënten</li><li>Jullie wachtwoordzin</li><li>Betaalkaartgegevens (die gaan rechtstreeks naar de betaalprovider)</li></ul></div>
 </div></section>
 <section class="band"><div class="wrap grid2">
+<div class="stack"><span class="eyebrow">De slotbout</span><h2>De browser zelf houdt de deur dicht</h2><p class="lead">De applicatie bevat een beveiligingsregel (Content Security Policy) die de browser verbiedt om verbindingen naar buiten te maken. Niet wij beloven het: de browser dwingt het af. De app test dit bij het starten en laat het zien. Een bewuste poging om toch iets te versturen wordt geblokkeerd en in het logboek gezet.</p></div>
 <div class="stack"><span class="eyebrow">Zelf nagaan</span><h2>Vertrouw ons niet, test het</h2><p class="lead">Zet tijdens de proefperiode de internetverbinding uit en voer de controles opnieuw uit. Werkt het? Dan gaat er niets naar buiten. AccessGuard meet dit ook zelf en laat het zien.</p></div>
 <div class="stack"><span class="eyebrow">Wat AccessGuard niet kan voorkomen</span><p class="lead">Een besmette werkplek of iemand die een schermafbeelding maakt. Gebruik daarom een beheerde werkplek. Het logboek maakt misbruik van de tool zichtbaar.</p></div>
 </div></section>

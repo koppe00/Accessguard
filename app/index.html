@@ -1,4 +1,4 @@
-<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>AccessGuard</title>
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; worker-src blob:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; manifest-src 'none'"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>AccessGuard</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: één werkkolom, tabbladen per stap (bronnen → controles → signalen → rapport → sleutel → veiligheid), dossierachtige tabellen.
@@ -250,7 +250,7 @@ fieldset.prep legend{padding:0 4px}
       <small>Controle op wie welk dossier heeft bekeken, volgens NEN 7513</small>
     </div>
     <div class="pills">
-      <div class="local"><i aria-hidden="true"></i><button class="linkbtn" style="color:inherit" data-goto="veiligheid">Gegevens blijven op dit apparaat</button></div>
+      <div class="local"><i aria-hidden="true"></i><button class="linkbtn" style="color:inherit" data-goto="veiligheid" id="localPill">Gegevens blijven op dit apparaat</button></div>
       <div class="local" id="keyPill"><i aria-hidden="true" class="warn"></i>Controlecode <span class="mono" id="fpTop">…</span></div>
       <div class="local" id="vaultPill"><i aria-hidden="true" class="warn"></i><span id="vaultTop">Opslag verbinden…</span></div>
       <button class="btn" id="btnLock" type="button">Vergrendel</button>
@@ -1240,12 +1240,27 @@ function startNetWatch(){
 const external=u=>!/^(blob|data):/.test(u);
 
 /* ---------- Zelftests ---------- */
+/* ---------- Slotbout: Content Security Policy ---------- */
+const CSP={meta:null,strict:false,active:null,blocked:[]};
+(function(){const m=document.querySelector('meta[http-equiv="Content-Security-Policy" i]');CSP.meta=m?m.getAttribute('content'):null;CSP.strict=!!(CSP.meta&&/connect-src 'none'/.test(CSP.meta))})();
+document.addEventListener('securitypolicyviolation',e=>{const u=String(e.blockedURI||'');if(/csp-probe\.invalid/.test(u))return;CSP.blocked.push({u,d:e.effectiveDirective||e.violatedDirective,t:Date.now()});try{log('Verbinding geblokkeerd door de browser',(e.effectiveDirective||'')+' '+u.slice(0,80))}catch(_){}});
+async function cspProbe(){
+  if(!CSP.strict){CSP.active=false;return false}
+  let hit=false;const h=e=>{if(/csp-probe\.invalid|^https?$/.test(String(e.blockedURI)))hit=true};
+  document.addEventListener('securitypolicyviolation',h);
+  try{await fetch('https://csp-probe.invalid/test',{mode:'no-cors',cache:'no-store'})}catch(_){}
+  await new Promise(r=>setTimeout(r,80));document.removeEventListener('securitypolicyviolation',h);
+  CSP.active=hit;return hit;
+}
+function cspText(){return CSP.active?'Aan. De browser weigert elke verbinding naar buiten. Dat staat in de beveiligingsregels van deze pagina (Content Security Policy) en is getest.':CSP.strict?'Ingesteld, maar de test bevestigde het niet.':'Niet actief in deze weergave. De omgeving waarin de app nu draait bepaalt de regels. In de zelfstandige versie staat de slotbout aan.'}
 async function runSelfChecks(){
   const out=[];
   const add=(ok,title,why)=>out.push({ok,title,why});
   const ext=netLog.filter(x=>external(x.u)),after=dataReadyAt==null?[]:ext.filter(x=>x.t>dataReadyAt);
   const hosts=[...new Set(ext.map(x=>{try{return new URL(x.u).host}catch(_){return x.u}}))];
   add(after.length===0,'Geen verbinding met buiten sinds de gegevens zijn geladen',after.length?after.length+' verzoek(en) gemeten na laden: '+[...new Set(after.map(x=>{try{return new URL(x.u).host}catch(_){return x.u}}))].join(', '):'De browser houdt bij met wie de pagina verbinding maakt. Sinds het openen: '+ext.length+' keer'+(hosts.length?' ('+hosts.join(', ')+')':'')+', allemaal vóór het laden van de gegevens.');
+  if(CSP.active==null)await cspProbe();
+  add(CSP.active===true,'Slotbout: de browser blokkeert verbindingen naar buiten',cspText()+(CSP.blocked.length?' Geblokkeerde pogingen sinds laden: '+CSP.blocked.length+'.':''));
   add(typeof worker==='object'&&worker!==null,'Het rekenen gebeurt apart van de pagina','De controles draaien in een apart deel van de browser, met een eigen geheugen.');
   if(aesKey&&hmacKey){
     add(aesKey.extractable===false&&hmacKey.extractable===false,'De sleutel is niet uit te lezen','De browser bevestigt dat niemand de sleutel kan uitlezen, ook de pagina zelf niet.');
@@ -1805,6 +1820,7 @@ async function approveRecipe(rc,door){
 
 /* ================= Platform: inloggen, onboarding, team, abonnement ================= */
 // Prijs per organisatie. Later per organisatie of staffel in te stellen.
+cspProbe().then(ok=>{const p=document.getElementById('localPill');if(p&&ok)p.textContent='Gegevens blijven op dit apparaat · slotbout aan'});
 const SITE=/\/app\/?(index\.html)?$/.test(location.pathname)?location.pathname.replace(/app\/?(index\.html)?$/,''):'https://koppe00.github.io/Accessguard/';
 document.querySelectorAll('[data-site]').forEach(a=>a.href=SITE);
 const PRICING={perOrg:99,vat:0.21,currency:'EUR',label:'per organisatie per maand'};
@@ -2131,7 +2147,7 @@ function trailHtml(where){
     '<div class="tarrow" aria-hidden="true">→</div>'+
     '<div class="tnode here"><span class="tk">2 · In dit browsertabblad</span><span class="small">De inhoud staat alleen in het werkgeheugen van dit tabblad. De controles draaien in een rekenkern (Web Worker) in hetzelfde tabblad.</span><span class="small">Op schijf of in browseropslag: <b class="trailStore">'+(st?st+' item(s) gevonden':'niets')+'</b>.</span><span class="small muted">Sluit je het tabblad, dan is de inhoud weg.</span></div>'+
     '<div class="tarrow stop" aria-hidden="true">✕</div>'+
-    '<div class="tnode out"><span class="tk">3 · Internet</span><span class="small">Verbindingen naar buiten sinds je de bestanden opende:</span><b class="trailNet '+(ext.length?'bad':'ok')+'">'+ext.length+'</b><span class="small muted trailHosts">'+(ext.length?'Naar: '+esc(hosts.join(', ')):'Gemeten met de browser zelf (Resource Timing), live bijgewerkt.')+'</span></div>'+
+    '<div class="tnode out"><span class="tk">3 · Internet</span><span class="small">Verbindingen naar buiten sinds je de bestanden opende:</span><b class="trailNet '+(ext.length?'bad':'ok')+'">'+ext.length+'</b><span class="small muted trailHosts">'+(ext.length?'Naar: '+esc(hosts.join(', ')):'Gemeten met de browser zelf (Resource Timing), live bijgewerkt.')+'</span><span class="small"><b>Slotbout:</b> '+(CSP.active?'aan, de browser weigert elke verbinding naar buiten':CSP.strict?'ingesteld':'niet actief in deze weergave')+'.</span></div>'+
     '</div><p class="small muted">Wat wél wordt bewaard: je oordelen en het logboek, versleuteld met jullie wachtwoordzin. Daar zitten geen bestanden in. Controleer het zelf: open de ontwikkelaarstools van je browser (F12), tabblad Netwerk.</p></div>';
 }
 setInterval(()=>{if(TRAIL.t0==null)return;const ext=trailNet(),st=trailStore();document.querySelectorAll('.trail').forEach(el=>{const n=el.querySelector('.trailNet');if(n){n.textContent=ext.length;n.className='trailNet '+(ext.length?'bad':'ok')}const h=el.querySelector('.trailHosts');if(h&&ext.length)h.textContent='Naar: '+[...new Set(ext.map(x=>{try{return new URL(x.u).host}catch(_){return x.u}}))].join(', ');const so=el.querySelector('.trailStore');if(so)so.textContent=st?st+' item(s) gevonden':'niets'})},1500);
@@ -2292,6 +2308,7 @@ function trustHtml(){
     '<label class="row small" style="gap:6px;margin-top:8px" for="trustOk"><input type="checkbox" id="trustOk" data-pchk="trust"'+(org.poc.trust?' checked':'')+'>De FG of CISO heeft deze informatie gezien en heeft geen bezwaar tegen de proef</label>';
 }
 const TRUST_ITEMS=[
+  ['Slotbout (Content Security Policy)','ok','In de zelfstandige versie verbiedt de pagina de browser om verbindingen naar buiten te maken (connect-src \'none\'). Te zien in de broncode en getest op het tabblad Veiligheid.'],
   ['Schema van de gegevensstromen','ok','Op het tabblad Veiligheid.'],
   ['Netwerkgedrag','ok','Geen verbindingen na het laden. Zelf te testen met de offline-test.'],
   ['Versleuteling','ok','AES-256-GCM, sleutel via PBKDF2 (200.000 rondes), codes via HMAC-SHA-256, sleutels niet uitleesbaar.'],
@@ -2305,7 +2322,7 @@ const TRUST_ITEMS=[
   ['Ingevulde leveranciersvragenlijst','prod','Op aanvraag.']];
 function trustA4(){return'AccessGuard in het kort, voor bestuur en FG\n\n'+
   'Wat het doet\nAccessGuard controleert of medewerkers dossiers alleen inzien als daar een reden voor is (NEN 7513). Alle inzages worden gecontroleerd, niet een steekproef.\n\n'+
-  'Waar de gegevens blijven\nAlle verwerking gebeurt op de computer van de gebruiker. Gegevens van patiënten en medewerkers gaan niet naar de leverancier. Dat kunnen jullie zelf testen: de applicatie werkt ook zonder internetverbinding.\n\n'+
+  'Waar de gegevens blijven\nAlle verwerking gebeurt op de computer van de gebruiker. Gegevens van patiënten en medewerkers gaan niet naar de leverancier. De browser zelf blokkeert elke verbinding naar buiten (slotbout). Dat kunnen jullie zelf testen.\n\n'+
   'Wat er bewaard wordt\nAlleen de oordelen en het logboek. Die gaan op slot met een wachtwoordzin die alleen jullie kennen. Patiëntnummers kunnen al vóór het aanleveren worden vervangen door codes.\n\n'+
   'Wie beslist\nEen mens beoordeelt elk signaal. AccessGuard geeft geen oordeel over medewerkers (AVG artikel 22).\n\n'+
   'Wat de leverancier wel heeft\nNamen en e-mailadressen van gebruikers, en de factuurgegevens.\n\n'+
