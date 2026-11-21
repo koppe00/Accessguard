@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
   "model_type": "qwen2",
-  "quantization": "q4f16_1",
+  "quantization": "q4f32_1",
   "model_config": {
     "hidden_act": "silu",
     "hidden_size": 896,

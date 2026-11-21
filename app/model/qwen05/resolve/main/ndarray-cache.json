@@ -1,8 +1,8 @@
 {
     "metadata": {
         "ParamSize": 267,
-        "ParamBytes": 277996288.0,
-        "BitsPerParam": 4.501665573729716
+        "ParamBytes": 309011968.0,
+        "BitsPerParam": 5.003910477452378
     },
     "records": [
         {
@@ -22,7 +22,7 @@
                     "byteOffset": 0
                 }
             ],
-            "md5sum": "493b5641a854a7800c7fa11483aad4f7"
+            "md5sum": "a5fa7630a8a1c879d8d8b2011538811a"
         },
         {
             "dataPath": "params_shard_1.bin",
@@ -35,7 +35,7 @@
                         151936,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 8508416,
                     "byteOffset": 0
@@ -45,7 +45,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 8508416
@@ -67,7 +67,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 10689280
@@ -89,7 +89,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 15319808
@@ -99,7 +99,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 15864576
@@ -109,7 +109,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 15866368
@@ -131,7 +131,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 16384768
@@ -153,7 +153,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 16850688
@@ -163,7 +163,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 16900864
@@ -185,7 +185,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 19081728
@@ -207,7 +207,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 23712256
@@ -217,7 +217,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 24257024
@@ -227,7 +227,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 24258816
@@ -249,7 +249,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 24777216
@@ -271,7 +271,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 25243136
@@ -281,7 +281,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 25293312
@@ -303,7 +303,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 27474176
@@ -325,7 +325,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 32104704
@@ -335,7 +335,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 32649472
@@ -345,7 +345,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 32651264
@@ -367,13 +367,13 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 33169664
                 }
             ],
-            "md5sum": "ab6ecda2d3f3a0de7c8cec4aa445cb6e"
+            "md5sum": "bb8a20c211d35c35ad62f1a825c50bac"
         },
         {
             "dataPath": "params_shard_2.bin",
@@ -397,7 +397,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 401408
@@ -407,7 +407,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 451584
@@ -429,7 +429,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 2632448
@@ -451,7 +451,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 7262976
@@ -461,7 +461,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 7807744
@@ -471,7 +471,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 7809536
@@ -493,7 +493,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 8327936
@@ -515,7 +515,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 8793856
@@ -525,7 +525,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 8844032
@@ -547,7 +547,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 11024896
@@ -569,7 +569,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 15655424
@@ -579,7 +579,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 16200192
@@ -589,7 +589,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 16201984
@@ -611,7 +611,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 16720384
@@ -633,7 +633,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 17186304
@@ -643,7 +643,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 17236480
@@ -665,7 +665,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 19417344
@@ -687,7 +687,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 24047872
@@ -697,7 +697,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 24592640
@@ -707,7 +707,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 24594432
@@ -729,7 +729,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 25112832
@@ -751,7 +751,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 25578752
@@ -761,7 +761,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 25628928
@@ -783,7 +783,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 27809792
@@ -805,7 +805,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 32440320
@@ -815,7 +815,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 32985088
@@ -825,7 +825,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 32986880
@@ -842,7 +842,7 @@
                     "byteOffset": 32989184
                 }
             ],
-            "md5sum": "b3a5da130c89bfb0974596594fafb8b9"
+            "md5sum": "4ac62238322073dc5c0c9b04078db1d3"
         },
         {
             "dataPath": "params_shard_3.bin",
@@ -855,7 +855,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 0
@@ -877,7 +877,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 465920
@@ -887,7 +887,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 516096
@@ -909,7 +909,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 2696960
@@ -931,7 +931,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 7327488
@@ -941,7 +941,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 7872256
@@ -951,7 +951,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 7874048
@@ -973,7 +973,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 8392448
@@ -995,7 +995,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 8858368
@@ -1005,7 +1005,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 8908544
@@ -1027,7 +1027,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 11089408
@@ -1049,7 +1049,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 15719936
@@ -1059,7 +1059,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 16264704
@@ -1069,7 +1069,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 16266496
@@ -1091,7 +1091,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 16784896
@@ -1113,7 +1113,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 17250816
@@ -1123,7 +1123,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 17300992
@@ -1145,7 +1145,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 19481856
@@ -1167,7 +1167,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 24112384
@@ -1177,7 +1177,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 24657152
@@ -1187,7 +1187,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 24658944
@@ -1209,7 +1209,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 25177344
@@ -1231,7 +1231,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 25643264
@@ -1241,7 +1241,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 25693440
@@ -1263,7 +1263,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 27874304
@@ -1285,7 +1285,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 32504832
@@ -1295,7 +1295,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 33049600
@@ -1305,13 +1305,13 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 33051392
                 }
             ],
-            "md5sum": "64e66518c6a24be75f8155279db2c5dc"
+            "md5sum": "8c3af5dd46a5ef37463597356c924dbb"
         },
         {
             "dataPath": "params_shard_4.bin",
@@ -1335,7 +1335,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 516096
@@ -1357,7 +1357,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 982016
@@ -1367,7 +1367,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 1032192
@@ -1389,7 +1389,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 3213056
@@ -1411,7 +1411,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 7843584
@@ -1421,7 +1421,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 8388352
@@ -1431,7 +1431,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 8390144
@@ -1453,7 +1453,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 8908544
@@ -1475,7 +1475,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 9374464
@@ -1485,7 +1485,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 9424640
@@ -1507,7 +1507,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 11605504
@@ -1529,7 +1529,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 16236032
@@ -1539,7 +1539,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 16780800
@@ -1549,7 +1549,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 16782592
@@ -1571,7 +1571,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 17300992
@@ -1593,7 +1593,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 17766912
@@ -1603,7 +1603,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 17817088
@@ -1625,7 +1625,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 19997952
@@ -1647,7 +1647,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 24628480
@@ -1657,7 +1657,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 25173248
@@ -1667,7 +1667,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 25175040
@@ -1689,7 +1689,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 25693440
@@ -1711,7 +1711,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 26159360
@@ -1721,7 +1721,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 26209536
@@ -1743,7 +1743,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 28390400
@@ -1760,7 +1760,7 @@
                     "byteOffset": 28662784
                 }
             ],
-            "md5sum": "9300170c331c94e2e3d75fa4ce8ec9f4"
+            "md5sum": "d6849f4836a56796532408772094efd6"
         },
         {
             "dataPath": "params_shard_5.bin",
@@ -1773,7 +1773,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 0
@@ -1783,7 +1783,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 544768
@@ -1793,7 +1793,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 546560
@@ -1815,7 +1815,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 1064960
@@ -1837,7 +1837,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 1530880
@@ -1847,7 +1847,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 1581056
@@ -1869,7 +1869,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 3761920
@@ -1891,7 +1891,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 8392448
@@ -1901,7 +1901,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 8937216
@@ -1911,7 +1911,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 8939008
@@ -1933,7 +1933,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 9457408
@@ -1955,7 +1955,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 9923328
@@ -1965,7 +1965,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 9973504
@@ -1987,7 +1987,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 12154368
@@ -2009,7 +2009,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 16784896
@@ -2019,7 +2019,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 17329664
@@ -2029,7 +2029,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 17331456
@@ -2051,7 +2051,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 17849856
@@ -2073,7 +2073,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 18315776
@@ -2083,7 +2083,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 18365952
@@ -2105,7 +2105,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 20546816
@@ -2127,7 +2127,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 25177344
@@ -2137,7 +2137,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 25722112
@@ -2147,7 +2147,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 25723904
@@ -2169,7 +2169,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 26242304
@@ -2191,7 +2191,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 26708224
@@ -2201,7 +2201,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 26758400
@@ -2223,13 +2223,13 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 28939264
                 }
             ],
-            "md5sum": "2d355ba20df6d53411b34ee6827fa4aa"
+            "md5sum": "bc5c27170a9aa04e6facc0cf04556ead"
         },
         {
             "dataPath": "params_shard_6.bin",
@@ -2253,7 +2253,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 4358144
@@ -2263,7 +2263,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 4902912
@@ -2273,7 +2273,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 4904704
@@ -2295,7 +2295,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 5423104
@@ -2317,7 +2317,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 5889024
@@ -2327,7 +2327,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 5939200
@@ -2349,7 +2349,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 8120064
@@ -2371,7 +2371,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 12750592
@@ -2381,7 +2381,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 13295360
@@ -2391,7 +2391,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 13297152
@@ -2413,7 +2413,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 13815552
@@ -2435,7 +2435,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 14281472
@@ -2445,7 +2445,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 14331648
@@ -2467,7 +2467,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 16512512
@@ -2489,7 +2489,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 21143040
@@ -2499,7 +2499,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 21687808
@@ -2509,7 +2509,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 21689600
@@ -2531,7 +2531,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 22208000
@@ -2553,7 +2553,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 22673920
@@ -2563,7 +2563,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 22724096
@@ -2585,7 +2585,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 24904960
@@ -2607,7 +2607,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 29535488
@@ -2617,7 +2617,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 30080256
@@ -2627,7 +2627,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 30082048
@@ -2649,7 +2649,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 30600448
@@ -2671,7 +2671,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 31066368
@@ -2681,7 +2681,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 31116544
@@ -2698,7 +2698,7 @@
                     "byteOffset": 31118336
                 }
             ],
-            "md5sum": "9ebd1923287a6e428302e081dcec377f"
+            "md5sum": "f6827611ee989ba488d5db530effe0a6"
         },
         {
             "dataPath": "params_shard_7.bin",
@@ -2711,7 +2711,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 0
@@ -2733,7 +2733,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 4630528
@@ -2743,7 +2743,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 5175296
@@ -2753,7 +2753,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 5177088
@@ -2775,7 +2775,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 5695488
@@ -2797,7 +2797,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 6161408
@@ -2807,7 +2807,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 6211584
@@ -2829,7 +2829,7 @@
                         896,
                         152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 272384,
                     "byteOffset": 8392448
@@ -2851,7 +2851,7 @@
                         9728,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 544768,
                     "byteOffset": 13022976
@@ -2861,7 +2861,7 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 13567744
@@ -2871,7 +2871,7 @@
                     "shape": [
                         1152
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 2304,
                     "byteOffset": 13569536
@@ -2893,7 +2893,7 @@
                         1152,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 64512,
                     "byteOffset": 14087936
@@ -2915,7 +2915,7 @@
                         896,
                         28
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 50176,
                     "byteOffset": 14553856
@@ -2925,13 +2925,13 @@
                     "shape": [
                         896
                     ],
-                    "dtype": "float16",
+                    "dtype": "float32",
                     "format": "f32-to-bf16",
                     "nbytes": 1792,
                     "byteOffset": 14604032
                 }
             ],
-            "md5sum": "8dc5f90488e203648c6e615b03140531"
+            "md5sum": "e28b7d6b836a1bcb649031ea75718dd2"
         }
     ]
 }
