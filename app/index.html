@@ -313,7 +313,7 @@ fieldset.prep legend{padding:0 4px}
     <div class="prose">
       <h2>Bron koppelen</h2>
       <p class="lead">Hier koppel je een nieuw EPD of ECD. De assistent bekijkt hoe de exportbestanden zijn opgebouwd. Daarna maakt hij een koppeling, test die en laat zien of de kwaliteit goed genoeg is.</p>
-      <p class="small muted">De assistent is een AI-model. Hij ziet <b>geen namen, nummers of dossiers</b>. Hij krijgt alleen een beschrijving van de kolommen en tellingen. Je kunt hieronder precies lezen wat hij te zien kreeg.</p>
+      <p class="small muted">De assistent is een AI-model. Hij ziet <b>geen namen, nummers of dossiers</b>. Hij krijgt alleen een beschrijving van de kolommen en tellingen. Je kunt hieronder precies lezen wat hij te zien kreeg. Werkt de AI niet in deze versie, zoals op de website, dan doet een demo-assistent hetzelfde met vaste regels, zonder AI.</p>
     </div>
 
     <div class="card">
@@ -333,6 +333,7 @@ fieldset.prep legend{padding:0 4px}
       <div class="head"><h3>Stap 2. Laat de assistent de koppeling maken</h3><span class="tag" id="agentTag"></span></div>
       <div class="row">
         <button class="btn primary" id="btnAgent" type="button" disabled>Start de assistent</button>
+        <button class="btn" id="btnDemoAgent" type="button" disabled hidden>Demo-assistent (nagebootst)</button>
         <button class="btn" id="btnLib" type="button" disabled>Gebruik een bestaande koppeling</button>
         <button class="btn" id="btnStop" type="button" hidden>Stop</button>
         <span class="busy" id="agentState">Kies eerst een bron.</span>
@@ -954,6 +955,82 @@ function genScenario(id){
 }
 
 function libFingerprint(tables){return Object.values(tables).flatMap(t=>t.headers.map(h=>h.toLowerCase()))}
+
+/* ---------- Koppelen met vaste regels (demo-assistent, zonder AI) ---------- */
+function autoRecipe(){
+  const steps=[],tabs=Object.entries(SRC).map(([n,t])=>({n,t,prof:profile(t)}));
+  if(tabs.length<3)throw new Error('Er zijn minstens drie bestanden nodig: inzagelog, medewerkers en zorgcontacten.');
+  const vals=(t,i,max)=>{const out=new Set();for(const r of t.rows){const v=String(r[i]||'').trim();if(v)out.add(v);if(max&&out.size>=max)break}return out};
+  const fmtOf=(t,i)=>{const sm=[];for(const r of t.rows){const v=String(r[i]||'').trim();if(v)sm.push(v);if(sm.length>=200)break}
+    const all=re=>sm.length&&sm.filter(v=>re.test(v)).length/sm.length>.9;
+    if(all(/^\d{12,14}$/))return'epoch_ms';if(all(/^\d{8}$/))return'jjjjmmdd';if(all(/^\d{4}-\d{2}-\d{2}T/))return'iso';if(all(/^\d{4}-\d{2}-\d{2}$/))return'jjjj-mm-dd';
+    if(all(/^\d{1,2}-\d{1,2}-\d{4} \d/))return'dd-mm-jjjj uu:mm:ss';if(all(/^\d{1,2}-\d{1,2}-\d{4}$/))return'dd-mm-jjjj';if(all(/^\d{4}-\d{2}-\d{2} \d/))return'iso';return null};
+  const isTime=(t,i)=>{const f=fmtOf(t,i);return f==='epoch_ms'||f==='iso'||f==='dd-mm-jjjj uu:mm:ss'};
+  const isDate=(t,i)=>!!fmtOf(t,i);
+  const col=(x,re,ok)=>{const i=x.t.headers.findIndex((h,j)=>re.test(h)&&(!ok||ok(j)));return i};
+  // 1. inzagelog: grootste tabel met een tijdstip
+  const logT=tabs.filter(x=>x.t.headers.some((h,i)=>isTime(x.t,i))).sort((a,b)=>b.t.rows.length-a.t.rows.length)[0];
+  if(!logT)throw new Error('Geen tabel met tijdstippen gevonden. Zit de inzagelog erbij?');
+  const others=tabs.filter(x=>x!==logT);
+  steps.push('Inzagelog herkend: '+logT.n+' (grootste tabel met tijdstippen, '+logT.t.rows.length+' regels).');
+  // 2. sleutels via overlap van waarden
+  const logCodes=logT.t.headers.map((h,i)=>i).filter(i=>!isDate(logT.t,i)&&logT.prof[i].distinct>5);
+  let best=[];
+  for(const i of logCodes){const L=vals(logT.t,i,5000);for(const o of others)o.t.headers.forEach((h,j)=>{const O=vals(o.t,j);if(!O.size)return;let hit=0;O.forEach(v=>{if(L.has(v))hit++});const sc=hit/Math.min(O.size,L.size);if(hit>3)best.push({i,o,j,sc})})}
+  best.sort((a,b)=>b.sc-a.sc);
+  const relKey=best.find(b=>b.o.t.rows.length>=Math.max(...others.map(o=>o.t.rows.length))*.5&&b.o.t.headers.some((h,k)=>isDate(b.o.t,k)));
+  const empKey=best.find(b=>b!==relKey&&b.o!==(relKey&&relKey.o)&&b.i!==(relKey&&relKey.i));
+  if(!relKey||!empKey)throw new Error('Kon de bestanden niet aan elkaar koppelen: geen gedeelde patiënt- of medewerkerscodes gevonden.');
+  const relT=relKey.o,empT=empKey.o,H=x=>x.t.headers;
+  steps.push('Patiënt gekoppeld: '+H(logT)[relKey.i]+' ↔ '+relT.n+'.'+H(relT)[relKey.j]+' ('+Math.round(relKey.sc*100)+'% overlap).');
+  steps.push('Medewerker gekoppeld: '+H(logT)[empKey.i]+' ↔ '+empT.n+'.'+H(empT)[empKey.j]+' ('+Math.round(empKey.sc*100)+'% overlap).');
+  // 3. inzagelog-kolommen
+  const ti=logT.t.headers.findIndex((h,i)=>isTime(logT.t,i));
+  const catIdx=logT.t.headers.map((h,i)=>i).filter(i=>i!==ti&&i!==relKey.i&&i!==empKey.i&&logT.prof[i].distinct>1&&logT.prof[i].distinct<=40);
+  const ai=catIdx.find(i=>/act|metric|gebeurtenis|event|handeling|type/i.test(H(logT)[i]))??catIdx[0];
+  const ri=col(logT,/reden|reason|toelichting|motivatie|justification/i);
+  const acts=ai!=null?[...vals(logT.t,ai)]:[];
+  const btg=acts.filter(a=>/break|glass|btg|nood/i.test(a)),neg=acts.filter(a=>!btg.includes(a)&&/prefetch|sessie|session|background|vernieuwd|auto|systeem|login|logout/i.test(a)),ins=acts.filter(a=>!btg.includes(a)&&!neg.includes(a));
+  if(ai!=null)steps.push('Soorten handelingen ingedeeld: inzage '+ins.join(', ')+(btg.length?'; noodtoegang '+btg.join(', '):'')+(neg.length?'; niet meetellen '+neg.join(', '):'')+'.');
+  // 4. medewerkers
+  const E=empT,ek=empKey.j;
+  const afd=col(E,/afdeling|department|dept|standplaats|locatie|location|unit|specialisme/i),team=col(E,/team/i);
+  const nm=col(E,/naam|name/i,j=>j!==ek),fn=col(E,/functie|title|job|rol/i),ud=col(E,/uit.?dienst|termination|einde|end.?date/i),act=col(E,/actief|active/i);
+  const an=col(E,/achternaam|last.?name|surname/i),vl=col(E,/voorletter|initial/i);
+  const empty=E.t.rows.filter(r=>!String(r[ek]||'').trim()).length;
+  // 5. systeemaccounts
+  const empIds=vals(E.t,ek),cnt={};for(const r of logT.t.rows){const u=String(r[empKey.i]||'').trim();cnt[u]=(cnt[u]||0)+1}
+  const sysByName=new Set(E.t.rows.filter(r=>r.some(v=>/interface|koppel|hl7|systeem|batch/i.test(String(v)))).map(r=>String(r[ek]||'').trim()).filter(Boolean));
+  const excl=Object.entries(cnt).filter(([u,n])=>u&&(sysByName.has(u)||(!empIds.has(u)&&n>=300))).map(([u])=>u);
+  if(excl.length)steps.push('Systeemaccounts uitgesloten (veel regels en geen persoon): '+excl.length+'.');
+  // 6. relaties
+  const Rl=relT,rp=relKey.j;
+  const rDates=Rl.t.headers.map((h,i)=>i).filter(i=>isDate(Rl.t,i));
+  const rd=rDates.find(i=>/start|begin|contact|datum|date|opname|admi/i.test(H(Rl)[i])&&!/eind|end|discharge|ontslag/i.test(H(Rl)[i]))??rDates[0];
+  const rdt=Rl.t.headers.findIndex((h,i)=>i!==rd&&/eind|end|discharge|ontslag|tot/i.test(h));
+  const ra=col(Rl,/afdeling|dept|specialisme|locatie|location|unit|team|service/i);
+  const rs=col(Rl,/soort|type|class|categorie/i);
+  const filledEnd=rdt>=0?Rl.t.rows.filter(r=>String(r[rdt]||'').trim()).length:0;
+  const lopend=rs>=0?[...vals(Rl.t,rs)].filter(v=>/opname|inpatient|verblijf|traject|admission|klinisch/i.test(v)):[];
+  // 7. afdelingen vertalen
+  const useEmpAfd=afd>=0?afd:team;
+  const EA=[...vals(E.t,useEmpAfd)],RA=ra>=0?[...vals(Rl.t,ra)]:[];
+  const STOP=/^(loc|locatie|wijk|clinic|ward|unit|afdeling|team|dept|med|department|kliniek|polikliniek|poli)$/i;
+  const tok=v=>String(v).toLowerCase().replace(/[^a-z0-9à-ÿ ]/g,' ').split(/\s+/).filter(x=>x.length>=3&&!STOP.test(x));
+  const map={};
+  RA.forEach(r=>{if(EA.includes(r))return;let bestE=null,bs=0;const rt=tok(r);EA.forEach(e=>{const et=tok(e);let sc=0;rt.forEach(a=>{if(et.some(b=>b.startsWith(a)||a.startsWith(b)))sc++});if(r.length<=4&&e.toLowerCase().startsWith(r.toLowerCase()))sc+=2;if(sc>bs){bs=sc;bestE=e}});if(bestE&&bs>0)map[r]=bestE});
+  if(Object.keys(map).length)steps.push('Afdelingsnamen vertaald: '+Object.entries(map).slice(0,8).map(([a,b])=>a+' → '+b).join(', ')+(Object.keys(map).length>8?' …':'')+'.');
+  const covered=new Set(RA.map(r=>map[r]||r));const breed=EA.filter(e=>!covered.has(e)&&!/interface|it /i.test(e));
+  if(breed.length)steps.push('Afdelingen zonder eigen zorgcontacten, ingesteld als "mag alles zien": '+breed.join(', ')+'.');
+  const recept={naam:'Koppeling '+logT.n.replace(/\.(csv|txt)$/i,''),sector:/client|cliënt|verblijf|locatie/i.test(Rl.t.headers.join(' '))?'vvt':'ziekenhuis',
+    inzagelog:{tabel:logT.n,tijdstip:H(logT)[ti],tijdformaat:fmtOf(logT.t,ti),gebruiker:H(logT)[empKey.i],patient:H(logT)[relKey.i],actie:ai!=null?H(logT)[ai]:null,inzage_acties:ins,btg_acties:btg,negeer_acties:neg,reden:ri>=0?H(logT)[ri]:null,uitsluiten_accounts:excl},
+    medewerkers:{tabel:E.n,koppelsleutel:H(E)[ek],koppel_fallback:empty&&an>=0&&vl>=0?'achternaam_voorletter':'geen',achternaam:an>=0?H(E)[an]:null,voorletters:vl>=0?H(E)[vl]:null,naam:nm>=0?H(E)[nm]:null,afdeling:H(E)[useEmpAfd],functie:fn>=0?H(E)[fn]:null,uit_dienst:ud>=0?H(E)[ud]:null,uit_dienst_formaat:ud>=0?fmtOf(E.t,ud):null,actief:act>=0?H(E)[act]:null},
+    relaties:{tabel:Rl.n,patient:H(Rl)[rp],afdeling:H(Rl)[ra],datum:H(Rl)[rd],datum_tot:rdt>=0?H(Rl)[rdt]:null,datumformaat:fmtOf(Rl.t,rd),lege_einddatum:rdt>=0&&filledEnd===0?'lopend':'zelfde_dag',soort:rs>=0?H(Rl)[rs]:null,lopend_soorten:lopend},
+    rechten:null,afdeling_mapping:map,breed_afdelingen:breed};
+  if(empty&&an>=0&&vl>=0)steps.push('Een deel van de medewerkers heeft geen inlognaam; die wordt afgeleid uit achternaam en voorletter.');
+  if(rdt>=0&&filledEnd===0)steps.push('Verblijf zonder einddatum telt als lopend.');
+  return{recept,stappen:steps};
+}
 function libMatch(){
   const cur=new Set(libFingerprint(SRC));let best=null;
   for(const e of LIB){const s=new Set(e.fp);const inter=[...s].filter(x=>cur.has(x)).length;const score=inter/new Set([...s,...cur]).size;if(!best||score>best.score)best={score,entry:e}}
@@ -1166,6 +1243,7 @@ self.onmessage=e=>{
     else if(type==='approve'){const {D:D2}=transform(p.recept);D=D2;META={};for(const k in D)META[k]={src:'assistent',name:p.recept.naam||'Recept',rows:D[k].length};LIB.push({naam:p.recept.naam||'Recept',herkomst:'goedgekeurd door '+(p.door||'functioneel beheer')+' op '+new Date().toISOString().slice(0,10),fp:libFingerprint(SRC),recept:p.recept});res={meta:META}}
     else if(type==='leak'){res=leakCheck(p.text,p.allow)}
     else if(type==='lib'){res=libMatch()}
+    else if(type==='auto'){res=autoRecipe()}
     self.postMessage({rid,ok:true,res});
   }catch(err){self.postMessage({rid,ok:false,error:String(err&&err.message||err)})}
 };
@@ -1705,7 +1783,7 @@ async function chooseSource(id,label,files){
   $('#agentState').textContent='Bestanden inlezen…';
   try{asst.overview=id?await call('scn_load',{id}):await call('scn_files',{files});asst.label=label;
     renderOverview(asst.overview);resetAgentUi();await renderAiPreview();
-    $('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#agentState').textContent='Klaar om te starten.';$('#agentTag').textContent=label;
+    $('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#btnDemoAgent').disabled=false;if(aiAvail==null)await checkAi();$('#agentState').textContent=aiAvail===false?'Klaar. De AI-assistent werkt niet in deze versie; gebruik de demo-assistent of een bestaande koppeling.':'Klaar om te starten.';$('#agentTag').textContent=label;
     log('Bron gekozen om te koppelen',label);
   }catch(e){$('#agentState').textContent='Inlezen lukte niet: '+e.message}
 }
@@ -1760,6 +1838,38 @@ const AGENT_TOOLS=[
      feedItem(r.klaar?'ok':'q','Koppeling klaar om goed te keuren',gateLine(r));renderPaspoort(r,rc,{bron:'assistent',final:true,toelichting:asst.final.toelichting});
      const res={ontvangen:true,klaar:r.klaar,poorten:r.poorten};seenAdd('Resultaat submit_recipe',JSON.stringify(res));return res}}
 ];
+let aiAvail=null;
+async function checkAi(){try{const sm=window.claude&&window.claude.use?await window.claude.use('sample'):null;if(!sm){aiAvail=false}else{const lim=await sm.limits();aiAvail=!!(lim&&lim.tools)}}catch(_){aiAvail=false}
+  $('#btnDemoAgent').hidden=aiAvail!==false;return aiAvail}
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+async function simulateAgent(){
+  if(asst.running)return;
+  resetAgentUi();asst.running=true;$('#btnAgent').disabled=true;$('#btnLib').disabled=true;$('#btnDemoAgent').disabled=true;
+  try{
+    feedItem('','Demo-assistent gestart','Nagebootst: deze versie gebruikt vaste regels in plaats van een AI-model. Er wordt niets verstuurd.');
+    $('#agentState').textContent='De demo-assistent is bezig…';
+    const sv=asst.preview||await call('survey');
+    const nCol=sv.tabellen.reduce((a,t)=>a+t.kolommen.length,0);
+    feedItem('','Bestanden bekeken op dit apparaat',sv.tabellen.length+' bestanden, '+nCol+' kolommen. Alleen de beschrijving wordt gebruikt, niet de inhoud.');
+    seenAdd('Beschrijving die naar een AI-model zou gaan (in deze demo niet verstuurd)',JSON.stringify(sv,null,1));
+    await pause(500);
+    const a=await call('auto');
+    for(const st of a.stappen){feedItem('',st.split(':')[0],st.includes(':')?st.slice(st.indexOf(':')+1).trim():'');await pause(350)}
+    let rc=a.recept,r=await call('dry',{recept:rc});
+    feedItem(r.klaar?'ok':'q','Test van de koppeling',gateLine(r));
+    const low=(r.relaties&&r.relaties.per_afdeling||[]).filter(x=>!x.breed&&x.inzages>=50&&x.met_bewijs_pct<50).slice(0,2);
+    for(const x of low){
+      const ans=await askUser('Bij '+x.afdeling+' heeft maar '+String(x.met_bewijs_pct).replace('.',',')+'% van de inzages een zorgcontact. Mag deze afdeling alle patiënten zien, zoals vaak bij een spoedeisende hulp?',['Ja, mag alles zien','Nee, dat zijn signalen']);
+      if(/^Ja/.test(ans)){rc.breed_afdelingen=[...new Set((rc.breed_afdelingen||[]).concat(x.afdeling))];r=await call('dry',{recept:rc});feedItem(r.klaar?'ok':'q','Opnieuw getest',gateLine(r))}
+    }
+    asst.final={rc,r};asst.last=r;asst.lastRecept=rc;
+    $('#agentText').hidden=false;$('#agentText').textContent='Ik heb de inzagelog, de medewerkers en de zorgcontacten aan elkaar gekoppeld via gedeelde codes. Soorten handelingen en afdelingsnamen zijn vertaald en systeemaccounts zijn uitgesloten. '+(r.klaar?'Alle kwaliteitseisen zijn gehaald.':'Nog niet alle kwaliteitseisen zijn gehaald; bekijk de test hieronder.')+' Controleer de koppeling en keur hem goed. (Demo: dit is gedaan met vaste regels, niet met AI.)';
+    renderPaspoort(r,rc,{bron:'demo-assistent',final:true});
+    $('#agentState').textContent='Klaar. Bekijk de kwaliteitscheck en keur de koppeling goed.';
+    log('Demo-assistent klaar',gateLine(r));
+  }catch(e){$('#agentState').textContent='De demo-assistent kon geen koppeling maken: '+e.message;feedItem('q','Geen koppeling',e.message)}
+  finally{asst.running=false;$('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#btnDemoAgent').disabled=false}
+}
 async function runAgent(){
   if(asst.running)return;
   let sample=null;try{sample=window.claude&&window.claude.use?await window.claude.use('sample'):null}catch(_){}
@@ -2265,7 +2375,7 @@ function fbPanel(){
     '<div class="row"><button class="btn primary" type="button" data-pact="fbsend">'+(fb.status==='verstuurd'?'Mail opnieuw versturen':'Mail versturen')+'</button><button class="btn" type="button" data-pact="fbcopy">Kopieer mail</button><span class="small" id="fbMsg" role="status">'+(fb.status==='verstuurd'?'Verstuurd naar '+esc(fb.naam)+' op '+fmtD(fb.sentAt)+' (demo).':'')+'</span></div>';
 }
 function validateHtml(){
-  let h='<div class="row"><label class="btn" for="pocFiles" style="cursor:pointer">Open bestanden van deze computer</label><input type="file" id="pocFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"><button class="btn" type="button" data-pact="oefen">Oefenen: standaardformaat</button><button class="btn" type="button" data-pact="oefenhix">Oefenen: export zoals uit een EPD</button><span class="busy">'+esc(pocMsg)+'</span></div>'+
+  let h='<div class="row"><label class="btn" for="pocFiles" style="cursor:pointer">Open bestanden van deze computer</label><input type="file" id="pocFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"><button class="btn" type="button" data-pact="oefen">Oefenen: standaardformaat</button><button class="btn" type="button" data-pact="oefenhix">Oefenen: export zoals uit een EPD</button><button class="btn" type="button" data-pact="oefenepic">Oefenen: Engelstalige export</button><span class="busy">'+esc(pocMsg)+'</span></div>'+
     '<p class="small muted">Net als een bestand openen in Excel: de browser leest het bestand op deze computer. Er wordt niets geüpload of verstuurd. De oefenbestanden zijn verzonnen.</p>'+trailHtml('poc')+'';
   if(!pocVal)return h;
   const F=valFindings(pocVal),n={fout:0,let:0,ok:0};F.forEach(f=>n[f.lvl]++);
@@ -2360,7 +2470,7 @@ async function pocHandoffStart(){
   location.hash='assistent';show();
   await chooseSource(pocSrc.files?null:pocSrc.scn,pocSrc.files?'Bestanden uit de proefperiode':'Oefenexport',pocSrc.files||null);
   await libOnly();
-  if(!asst.final){feedItem('','De assistent maakt een nieuwe koppeling','Dit duurt meestal 30 tot 90 seconden.');await runAgent()}
+  if(!asst.final){if(aiAvail==null)await checkAi();if(aiAvail){feedItem('','De assistent maakt een nieuwe koppeling','Dit duurt meestal 30 tot 90 seconden.');await runAgent()}else await simulateAgent()}
 }
 async function pocRedry(){pocDry=await call('dry',{recept:pocRecept});org.poc.kwaliteit.poorten=pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm}));saveOrgs();renderPoc()}
 
@@ -2380,6 +2490,7 @@ $('#pocBox').addEventListener('click',async e=>{
   const a=e.target.closest('[data-pact]');if(!a)return;const act=a.dataset.pact;
   if(act==='oefen'){trailOpen([],'oefen');await pocLoad(null,'D')}
   else if(act==='oefenhix'){trailOpen([],'oefen');await pocLoad(null,'A')}
+  else if(act==='oefenepic'){trailOpen([],'oefen');await pocLoad(null,'B')}
   else if(act==='koppel')await pocHandoffStart();
   else if(act==='use'){await approveRecipe(pocRecept,session.name);location.hash='poc';show()}
   else if(act==='fbcopy'){const m=fbMail();pocCopy('Onderwerp: '+m.onderwerp+'\n\n'+m.tekst,'fbMsg')}
@@ -2485,6 +2596,7 @@ $('#scnList').addEventListener('click',e=>{const b=e.target.closest('.scnbtn');i
 $('#ownFiles').addEventListener('change',async e=>{const fl=[...e.target.files];if(!fl.length)return;trailOpen(fl,'bron');const texts=await Promise.all(fl.map(f=>f.text().then(text=>({name:f.name,text}))));chooseSource(null,'Eigen exports ('+fl.length+' bestanden)',texts)});
 $('#btnAgent').addEventListener('click',runAgent);
 $('#btnLib').addEventListener('click',libOnly);
+$('#btnDemoAgent').addEventListener('click',simulateAgent);
 $('#btnStop').addEventListener('click',()=>{asst.ctl&&asst.ctl.abort()});
 
 $('#rulesBox').addEventListener('change',e=>{const c=e.target.closest('[data-rule]');if(c)cfg.rules[c.dataset.rule]=c.checked});
