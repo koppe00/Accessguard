@@ -222,6 +222,11 @@ fieldset.prep legend{padding:0 4px}
 }
 .devbanner{font-size:13.5px;padding:10px 14px;border:1px solid var(--midden);border-radius:8px;background:color-mix(in srgb,var(--midden) 8%,var(--surface));max-width:none}
 .seg{display:flex;gap:4px}
+#pocBox .seg{flex-wrap:wrap}
+.spectable td{vertical-align:top}
+.spectable td.mono{white-space:nowrap}
+#pocBox h4{margin:14px 0 6px}
+#pocBox .rolegrid{margin:8px 0}
 .report h3{margin-top:6px}
 @media (prefers-reduced-motion: no-preference){.btn,.chip{transition:border-color .15s,background .15s}}
 </style>
@@ -260,6 +265,7 @@ fieldset.prep legend{padding:0 4px}
   <p class="demo-note"><span id="dataNote">Voorbeeldgegevens worden geladen.</span> <button class="linkbtn" data-goto="veiligheid">Hoe blijven de gegevens veilig?</button></p>
 
   <nav class="steps" aria-label="Onderdelen">
+    <button data-view="poc" id="navPoc">Proefperiode</button>
     <button data-view="signalen">Signalen</button>
     <button data-view="rapport">Rapport</button>
     <span class="navsep" aria-hidden="true"></span>
@@ -276,6 +282,10 @@ fieldset.prep legend{padding:0 4px}
   <section id="v-team" hidden style="display:flex;flex-direction:column;gap:14px">
     <div class="prose"><h2>Team</h2><p>Wie werken er met AccessGuard? Meestal zijn dat één of twee mensen, bijvoorbeeld een privacy officer en een collega van interne controle.</p></div>
     <div class="card" id="teamBox"></div>
+  </section>
+  <section id="v-poc" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="prose"><h2 id="pocTitle">Proefperiode</h2><p>In 30 dagen test je AccessGuard met jullie eigen gegevens van één maand. Je ziet of het werkt, en je gaat zelf na of het veilig is. Daarna sluit je een abonnement af. Alles wat je instelt blijft staan.</p></div>
+    <div id="pocBox" style="display:flex;flex-direction:column;gap:14px"></div>
   </section>
   <section id="v-abonnement" hidden style="display:flex;flex-direction:column;gap:14px">
     <div class="prose"><h2>Abonnement</h2><p>Eén vaste prijs per maand voor de hele organisatie.</p></div>
@@ -803,13 +813,14 @@ function run(cfg){
         G.set('R6|'+g+'|'+mo,{key:'R6|'+g+'|'+mo,rule:'R6',gebruiker:g,patient:'',first:Date.UTC(y,mm-1,1),last:Math.min(end,to),count:n,off:false,detail:n.toLocaleString('nl-NL')+' verschillende dossiers in '+new Date(Date.UTC(y,mm-1,1)).toLocaleDateString('nl-NL',{month:'long',year:'numeric',timeZone:'UTC'})+'. Een gewone collega op de afdeling: '+md+'.',hits:[]})}});
   }
   const rolesBy=new Map();autorisaties.forEach(a=>{if(!rolesBy.has(a.gebruiker))rolesBy.set(a.gebruiker,[]);rolesBy.get(a.gebruiker).push(a.rol)});
+  const KNOWN=new Set(Object.values(MATRIX).flat()),normKnown=autorisaties.some(x=>KNOWN.has(x.rol));
   const auth=(rule,g,detail)=>{if(!RL[rule])return;const ak=rule+'|'+g+'|'+monthKey(to);G.set(ak,{key:ak,rule,gebruiker:g,patient:'',first:null,last:null,count:1,off:false,detail,hits:[]})};
   const fd=t=>new Date(t).toISOString().slice(0,10);
   rolesBy.forEach((roles,g)=>{
     const m=emp.get(g);
     if(!m){auth('A2',g,'Staat niet in de personeelslijst. Rechten: '+roles.join(', '));return}
     if(!m.in_dienst||(m.uit_dienst_datum&&m.uit_dienst_datum<to))auth('A2',g,'Uit dienst'+(m.uit_dienst_datum&&m.uit_dienst_datum>1?' sinds '+fd(m.uit_dienst_datum):'')+'. Rechten: '+roles.join(', '));
-    const allowed=MATRIX[m.functie];
+    const allowed=normKnown?MATRIX[m.functie]:null;
     if(allowed){const extra=roles.filter(r=>!allowed.includes(r));if(extra.length)auth('A1',g,'Functie '+m.functie+' heeft ook: '+extra.join(', '))}
     if(m.laatste_login&&m.in_dienst&&to-m.laatste_login>cfg.slapend*DAY)auth('A3',g,'Laatst ingelogd op '+fd(m.laatste_login)+', '+Math.round((to-m.laatste_login)/DAY)+' dagen geleden');
   });
@@ -842,16 +853,16 @@ const fISO=t=>new Date(t).toISOString().slice(0,19)+'Z';
 const fD=t=>new Date(t).toISOString().slice(0,10);
 
 function genScenario(id){
-  const R=rng({A:101,B:202,C:303}[id]),pick=a=>a[Math.floor(R()*a.length)],ri=(a,b)=>a+Math.floor(R()*(b-a+1));
+  const R=rng({A:101,B:202,C:303,D:404}[id]),pick=a=>a[Math.floor(R()*a.length)],ri=(a,b)=>a+Math.floor(R()*(b-a+1));
   const wpick=ws=>{let x=R()*ws.reduce((s,w)=>s+w[1],0);for(const [v,w] of ws){if((x-=w)<0)return v}return ws[0][0]};
   const ref=Date.UTC(2026,9,31),days=30,hosp=id!=='C';
-  const units=id==='A'?[['Cardiologie','CAR'],['Interne geneeskunde','INT'],['Chirurgie','CHI'],['Longziekten','LON'],['Geriatrie','GER'],['Spoedeisende hulp','SEH',1],['Radiologie','',1],['Apotheek','',1]]
+  const units=(id==='A'||id==='D')?[['Cardiologie','CAR'],['Interne geneeskunde','INT'],['Chirurgie','CHI'],['Longziekten','LON'],['Geriatrie','GER'],['Spoedeisende hulp','SEH',1],['Radiologie','',1],['Apotheek','',1]]
     :id==='B'?[['Cardiology','CARDIOLOGY CLINIC'],['Internal Medicine','INTERNAL MED WARD'],['General Surgery','SURGERY WARD'],['Pulmonology','PULM CLINIC'],['Geriatrics','GERIATRICS UNIT'],['Emergency Department','EMERGENCY',1],['Radiology','',1],['Pharmacy','',1]]
     :[['De Linde','Loc. De Linde'],['Het Anker','Loc. Het Anker'],['Zeezicht','Loc. Zeezicht'],['Thuiszorg Noord','Wijk Noord']];
   const relU=units.map((u,i)=>i).filter(i=>units[i][1]);
   const AN=[['','Jansen'],['de','Vries'],['','Bakker'],['van','Dijk'],['','Visser'],['','Smit'],['','Meijer'],['de','Boer'],['','Mulder'],['de','Groot'],['','Bos'],['','Vos'],['','Peters'],['','Hendriks'],['van','Leeuwen'],['','Dekker'],['','Brouwer'],['de','Wit'],['','Dijkstra'],['','Kok'],['','Verhoeven'],['van','Dam'],['','Schouten'],['','Koster'],['','Prins'],['','Huisman'],['','Vermeulen'],['','Kuipers'],['van der','Linden'],['','Hoekstra'],['','Post'],['','Molenaar'],['','Kramer'],['','Wolters']];
   const VN=['Anouk','Bram','Daan','Emma','Fleur','Gijs','Iris','Jesse','Lotte','Maarten','Noor','Pieter','Roos','Sander','Tess','Wouter','Yara','Koen','Lieke','Thijs','Marieke','Hanna','Jeroen','Ilse','Ruben','Sanne'];
-  const FN=id==='A'?['Verpleegkundige','Verpleegkundige','Verpleegkundige','Medisch specialist','Arts-assistent','Doktersassistent','Secretaresse']:id==='B'?['Registered Nurse','Registered Nurse','Registered Nurse','Physician','Resident','Medical Assistant','Unit Secretary']:['Verzorgende IG','Verzorgende IG','Helpende','Wijkverpleegkundige','Teamleider'];
+  const FN=(id==='A'||id==='D')?['Verpleegkundige','Verpleegkundige','Verpleegkundige','Medisch specialist','Arts-assistent','Doktersassistent','Secretaresse']:id==='B'?['Registered Nurse','Registered Nurse','Registered Nurse','Physician','Resident','Medical Assistant','Unit Secretary']:['Verzorgende IG','Verzorgende IG','Helpende','Wijkverpleegkundige','Teamleider'];
   const nEmp=hosp?140:120,nPat=hosp?2500:420;
   const emps=[];
   for(let i=0;i<nEmp;i++){const u=i%units.length;const [tv,an]=pick(AN);emps.push({i,u,tv,an,vn:pick(VN),fn:units[u][0]==='Radiologie'||units[u][0]==='Radiology'?(id==='A'?'Laborant radiologie':'Radiographer'):units[u][0]==='Apotheek'||units[u][0]==='Pharmacy'?(id==='A'?'Apothekersassistent':'Pharmacy Technician'):pick(FN),uit:null,inactief:false})}
@@ -864,8 +875,8 @@ function genScenario(id){
   const hasRel=(e,p,t)=>pats[p].cons.some(c=>(units[e.u][2]||c.u===e.u)&&t>=c.s-30*DAY&&t<=(c.e||c.s)+30*DAY);
   const L=[];
   const tDay=day=>day+ri(7,21)*3600e3+ri(0,3599)*1e3,tAny=day=>day+ri(0,86399)*1e3,tNight=day=>day+pick([0,1,2,3,23])*3600e3+ri(0,3599)*1e3;
-  const ACT=id==='A'?[['INZ',70],['WIJ',18],['PRT',3],['EXP',1]]:id==='B'?[['Chart Review',62],['Note Viewed',16],['Order Entry',12],['Report Printed',3]]:[['dossier.geopend',55],['rapportage.toegevoegd',25],['medicatie.bekeken',15],['zorgplan.afgedrukt',5]];
-  const BTG=id==='A'?'BTG':id==='B'?'Break-the-Glass Access':'noodtoegang';
+  const ACT=id==='D'?[['inzage',70],['wijziging',18],['afdruk',3],['export',1]]:id==='A'?[['INZ',70],['WIJ',18],['PRT',3],['EXP',1]]:id==='B'?[['Chart Review',62],['Note Viewed',16],['Order Entry',12],['Report Printed',3]]:[['dossier.geopend',55],['rapportage.toegevoegd',25],['medicatie.bekeken',15],['zorgplan.afgedrukt',5]];
+  const BTG=id==='D'?'noodtoegang':id==='A'?'BTG':id==='B'?'Break-the-Glass Access':'noodtoegang';
   const ev=(e,p,t,act,reden)=>L.push({e,p,t,act:act||wpick(ACT),reden:reden||''});
   for(let d=0;d<days;d++){
     const day=ref-d*DAY,w=new Date(day).getUTCDay(),we=w===0||w===6;
@@ -893,6 +904,7 @@ function genScenario(id){
     const big=emps[9];for(let k=0;k<700;k++){const day=ref-ri(0,29)*DAY;for(let tr=0;tr<8;tr++){const c=pick(byU[big.u]);if(day>=c.s-20*DAY&&day<=(c.e||c.s)+20*DAY){ev(big,c.p,tDay(day));break}}}}
   else{const e=emps[20];for(let k=0;k<5;k++){const c=pick(byU[e.u]);ev(e,c.p,tDay(ref-ri(0,9)*DAY))}}
   if(id==='A'){for(let k=0;k<4000;k++)ev('HL7KOPPEL',ri(0,nPat-1),tAny(ref-ri(0,days-1)*DAY),'INZ');for(let k=0;k<1500;k++)ev('WERKLIJST_NACHT',ri(0,nPat-1),ref-ri(0,days-1)*DAY+2*3600e3+ri(0,3599)*1e3,'INZ');for(let k=0;k<12;k++)ev('TESTPAT',ri(0,nPat-1),tDay(ref-ri(0,days-1)*DAY),'INZ')}
+  if(id==='D'){for(let k=0;k<3000;k++)ev('HL7KOPPEL',ri(0,nPat-1),tAny(ref-ri(0,days-1)*DAY),'inzage');for(let k=0;k<1500;k++)ev(pick(active),ri(0,nPat-1),ref-ri(0,days-1)*DAY+2*3600e3+ri(0,3599)*1e3,'automatisch')}
   if(id==='B'){for(let k=0;k<4000;k++)ev('IFACE',ri(0,nPat-1),tAny(ref-ri(0,days-1)*DAY),'Chart Review')}
   if(id==='C'){for(let k=0;k<800;k++)ev('koppeling-lsp',ri(0,nPat-1),tAny(ref-ri(0,days-1)*DAY),'dossier.geopend')}
   L.sort((a,b)=>a.t-b.t);
@@ -904,6 +916,15 @@ function genScenario(id){
     T['auditlog_export.csv']={headers:['Datum/tijd','Gebruikerscode','Patientnr','Actie','Reden','Module','Werkstation'],rows:L.map(x=>[fNLt(x.t),typeof x.e==='string'?x.e:x.e.login,pid(x.p),x.act,x.reden,typeof x.e==='string'?'Interface':pick(['Dossier','Dossier','Orders','Agenda']),'WS-'+ri(100,480)])};
     T['personeel.csv']={headers:['Personeelsnr','Achternaam','Tussenvoegsel','Voorletters','Afdeling','Functie','EPD-login','Datum uit dienst'],rows:emps.map(e=>[String(100000+e.i),e.an,e.tv,e.vn[0]+'.',units[e.u][0],e.fn,e.i%8===3&&!/\d$/.test(e.login)?'':e.login,e.uit?fNL(e.uit):''])};
     T['afspraken_opnames.csv']={headers:['Patientnr','Specialisme','Startdatum','Einddatum','Soort'],rows:cons.map(c=>[pid(c.p),units[c.u][1],fYMD(c.s),c.e?fYMD(c.e):'',c.opn?'Opname':'Afspraak'])};
+  }else if(id==='D'){
+    const used={};const login=e=>{if(e.login!==undefined)return e.login;let b=e.an.toUpperCase().replace(/[^A-Z]/g,'')+e.vn[0];if(used[b]){used[b]++;b=b+used[b]}else used[b]=1;return e.login=b};
+    emps.forEach(login);
+    const pid=p=>fnv('bron|'+p)+fnv('sleutel|'+p);
+    const grp={'Verpleegkundige':'EPD-Verpleegkunde','Medisch specialist':'EPD-Medisch','Arts-assistent':'EPD-Medisch','Doktersassistent':'EPD-Polikliniek','Secretaresse':'EPD-Secretariaat','Laborant radiologie':'EPD-Radiologie','Apothekersassistent':'EPD-Apotheek'};
+    T['inzagelog.csv']={headers:['tijdstip','gebruiker','patient','actie','reden','soort_account'],rows:L.map(x=>[fISO(x.t).replace('Z',''),typeof x.e==='string'?x.e:x.e.login,pid(x.p),x.act,x.reden,typeof x.e==='string'?'systeem':'persoon'])};
+    T['zorgcontacten.csv']={headers:['patient','afdeling','begin','einde','soort'],rows:cons.map(c=>[pid(c.p),units[c.u][0],fD(c.s),c.e?fD(c.e):'',c.opn?'opname':'afspraak'])};
+    T['medewerkers.csv']={headers:['gebruiker','naam','afdeling','functie','uit_dienst'],rows:emps.map(e=>[e.login,e.vn+' '+(e.tv?e.tv+' ':'')+e.an,units[e.u][0],e.fn,e.uit?fD(e.uit):''])};
+    T['rechten.csv']={headers:['gebruiker','groep'],rows:emps.map(e=>[e.login,grp[e.fn]||'EPD-Basis']).concat([['ZZ_EXTERN01','EPD-Medisch'],['HL7KOPPEL','EPD-Koppeling']])};
   }else if(id==='B'){
     const uid=e=>'E'+(10001+e.i),pid=p=>'Z'+String(p).padStart(6,'0');
     T['ACCESS_LOG.csv']={headers:['ACCESS_INSTANT','USER_ID','PAT_ID','METRIC_NAME','ACCESS_REASON','WORKSTATION_ID'],rows:L.map(x=>[fISO(x.t),x.e==='IFACE'?'E00001':uid(x.e),pid(x.p),x.act,x.reden,x.e==='IFACE'?'SRV-ENGINE':'WKS'+ri(1000,4999)])};
@@ -965,7 +986,7 @@ function transform(rc){
   if(!LT||!MT||!RT)throw new Error(errs.join('; '));
   const li={t:C(LT,il.tijdstip,1),u:C(LT,il.gebruiker,1),p:C(LT,il.patient,1),a:C(LT,il.actie),r:C(LT,il.reden)};
   const mi={k:C(MT,md.koppelsleutel),an:C(MT,md.achternaam),vl:C(MT,md.voorletters),n:C(MT,md.naam),af:C(MT,md.afdeling,1),fn:C(MT,md.functie),ui:C(MT,md.uit_dienst),ac:C(MT,md.actief)};
-  const ri_={p:C(RT,rl.patient,1),af:C(RT,rl.afdeling,1),d:C(RT,rl.datum,1),dt:C(RT,rl.datum_tot)};
+  const ri_={p:C(RT,rl.patient,1),af:C(RT,rl.afdeling,1),d:C(RT,rl.datum,1),dt:C(RT,rl.datum_tot),s:C(RT,rl.soort)};const lopSet=new Set((rl.lopend_soorten||[]).map(x=>String(x).toLowerCase()));
   if(errs.length)throw new Error(errs.join('; '));
   const V=(row,i)=>i<0?'':String(row[i]??'').trim();
   const fb=md.koppel_fallback==='achternaam_voorletter';
@@ -984,7 +1005,7 @@ function transform(rc){
   const con=[],unmapped={};
   for(const row of RT.rows){const raw=V(row,ri_.af),af=map[raw]!=null?map[raw]:raw;const d=parseFmt(V(row,ri_.d),rl.datumformaat);if(d==null)continue;
     if(!medAfd.has(af))unmapped[raw]=(unmapped[raw]||0)+1;
-    const tot=ri_.dt>=0?parseFmt(V(row,ri_.dt),rl.datumformaat):null;con.push({patient:V(row,ri_.p),afdeling:af,datum:d,datum_tot:tot!=null?tot:(rl.lege_einddatum==='lopend'?8.64e15:null),type:''})}
+    const tot=ri_.dt>=0?parseFmt(V(row,ri_.dt),rl.datumformaat):null;con.push({patient:V(row,ri_.p),afdeling:af,datum:d,datum_tot:tot!=null?tot:(rl.lege_einddatum==='lopend'||(ri_.s>=0&&lopSet.has(V(row,ri_.s).toLowerCase()))?8.64e15:null),type:ri_.s>=0?V(row,ri_.s):''})}
   const ins=new Set(il.inzage_acties||[]),btg=new Set(il.btg_acties||[]),neg=new Set(il.negeer_acties||[]),excl=new Set(il.uitsluiten_accounts||[]);
   let parsed=0,unparsedShapes={},exclAccRows=0,emptyPat=0;const exclAct={},unclass={},inz=[];
   for(const row of LT.rows){
@@ -997,7 +1018,9 @@ function transform(rc){
   }
   inz.sort((a,b)=>a.tijdstip-b.tijdstip);
   meds.forEach(m=>{if(m.uit_dienst_datum!=null&&m.uit_dienst_datum>maxT){m.in_dienst=true;m.uit_dienst_datum=null}});
-  return{D:{inzages:inz,contacten:con,patienten:[],medewerkers:meds,autorisaties:[]},stats:{rows:LT.rows.length,parsed,unparsedShapes,exclAccRows,exclAct,unclass,emptyPat,unmapped,medAfd:[...medAfd],derivedAll,empMap}};
+  const aut=[];const rr=rc.rechten;
+  if(rr&&rr.tabel&&SRC[rr.tabel]){const RRT=SRC[rr.tabel],gi=RRT.headers.indexOf(rr.gebruiker),ri2=RRT.headers.indexOf(rr.groep);if(gi>=0&&ri2>=0)for(const row of RRT.rows){const g=V(row,gi),r=V(row,ri2);if(g&&r)aut.push({gebruiker:g,rol:r})}}
+  return{D:{inzages:inz,contacten:con,patienten:[],medewerkers:meds,autorisaties:aut},stats:{rows:LT.rows.length,parsed,unparsedShapes,exclAccRows,exclAct,unclass,emptyPat,unmapped,medAfd:[...medAfd],derivedAll,empMap}};
 }
 function dryRun(rc){
   const {D:D2,stats:s}=transform(rc);
@@ -1058,6 +1081,50 @@ const RECEPT_A={naam:'Ziekenhuis-EPD auditlog (NL)',sector:'ziekenhuis',
   breed_afdelingen:['Spoedeisende hulp','Radiologie','Apotheek']};
 LIB.push({naam:RECEPT_A.naam,herkomst:'voorbeeld, goedgekeurd door functioneel beheer van een ander ziekenhuis',fp:['datum/tijd','gebruikerscode','patientnr','actie','reden','module','werkstation','personeelsnr','achternaam','tussenvoegsel','voorletters','afdeling','functie','epd-login','datum uit dienst','patientnr','specialisme','startdatum','einddatum','soort'],recept:RECEPT_A});
 
+
+/* ================= Aanleverspecificatie: validator ================= */
+function validateSpec(spec){
+  const norm=h=>String(h||'').trim().toLowerCase().replace(/\s+/g,'_');
+  const syn={};spec.acties.forEach(a=>{syn[a.code]=a.code;a.syn.forEach(x=>syn[x.toLowerCase()]=a.code)});
+  const out={bestanden:{},kruis:{},recept:null};
+  const used=new Set();
+  for(const f of spec.bestanden){
+    const moet=f.velden.filter(v=>v.eis==='moet').map(v=>v.k);
+    let name=Object.keys(SRC).find(n=>!used.has(n)&&n.toLowerCase()===f.naam);
+    if(!name)name=Object.keys(SRC).find(n=>!used.has(n)&&moet.every(k=>SRC[n].headers.map(norm).includes(k))&&f.velden.filter(v=>SRC[n].headers.map(norm).includes(v.k)).length>=moet.length);
+    if(!name){out.bestanden[f.id]={gevonden:false};continue}
+    used.add(name);const t=SRC[name],H=t.headers.map(norm),col={};f.velden.forEach(v=>{const i=H.indexOf(v.k);if(i>=0)col[v.k]={i,h:t.headers[i]}});
+    const r={gevonden:true,tabel:name,regels:t.rows.length,ontbreekt_moet:moet.filter(k=>!col[k]),ontbreekt_aanbevolen:f.velden.filter(v=>v.eis!=='moet'&&!col[v.k]).map(v=>v.k),extra:t.headers.filter((h,i)=>!f.velden.some(v=>v.k===H[i])),leeg:{},datum:{},col};
+    const n=t.rows.length||1;
+    f.velden.forEach(v=>{const c=col[v.k];if(!c)return;let e=0;for(const row of t.rows)if(!String(row[c.i]||'').trim())e++;
+      if(v.eis==='moet'&&e)r.leeg[v.k]=Math.round(1000*e/n)/10;
+      if(v.type==='datum'){let ok=0,iso=0,filled=0;for(const row of t.rows){const x=String(row[c.i]||'').trim();if(!x)continue;filled++;if(parseDate(x)!=null)ok++;if(/^\d{4}-\d{2}-\d{2}/.test(x))iso++}
+        r.datum[v.k]={leesbaar_pct:filled?Math.round(1000*ok/filled)/10:100,iso_pct:filled?Math.round(1000*iso/filled)/10:100}}});
+    if(f.id==='inzagelog'&&col.actie){const cnt={};for(const row of t.rows){const a=String(row[col.actie.i]||'').trim();cnt[a]=(cnt[a]||0)+1}
+      r.acties={onbekend:{},vertaald:{},verdeling:{}};Object.entries(cnt).forEach(([v,k])=>{const m=syn[v.toLowerCase()];if(!m)r.acties.onbekend[v||'(leeg)']=k;else{r.acties.verdeling[m]=(r.acties.verdeling[m]||0)+k;if(m!==v.toLowerCase())r.acties.vertaald[v]=m}})}
+    if(f.id==='inzagelog'&&col.soort_account){const sys=new Set();for(const row of t.rows)if(String(row[col.soort_account.i]||'').trim().toLowerCase()==='systeem')sys.add(String(row[col.gebruiker?col.gebruiker.i:0]||'').trim());r.systeemaccounts=[...sys]}
+    if(col.patient){let hx=0,m=0;for(const row of t.rows){const x=String(row[col.patient.i]||'').trim();if(!x)continue;m++;if(/^[0-9a-f]{12,}$/i.test(x))hx++;if(m>=500)break}r.pseudoniem=m>0&&hx/m>.9}
+    out.bestanden[f.id]=r;
+  }
+  const B=out.bestanden,val=(id,k)=>{const b=B[id];if(!b||!b.gevonden||!b.col[k])return null;const t=SRC[b.tabel];return t.rows.map(r=>String(r[b.col[k].i]||'').trim())};
+  const lg=val('inzagelog','gebruiker'),lp=val('inzagelog','patient'),mg=val('medewerkers','gebruiker'),cp=val('zorgcontacten','patient'),ca=val('zorgcontacten','afdeling'),ma=val('medewerkers','afdeling');
+  const sys=new Set((B.inzagelog&&B.inzagelog.systeemaccounts)||[]);
+  if(lg&&mg){const M=new Set(mg),U=new Set(lg.filter(x=>x&&!sys.has(x)));let hit=0;U.forEach(u=>{if(M.has(u))hit++});out.kruis.gebruikers_pct=U.size?Math.round(1000*hit/U.size)/10:100;out.kruis.gebruikers_onbekend=U.size-hit}
+  if(lp&&cp){const P=new Set(cp),L=new Set(lp.filter(Boolean));let hit=0;L.forEach(x=>{if(P.has(x))hit++});out.kruis.patienten_pct=L.size?Math.round(1000*hit/L.size)/10:100}
+  if(ca&&ma){const MA=new Set(ma.filter(Boolean)),CA=new Set(ca.filter(Boolean));out.kruis.afdeling_zonder_match=[...CA].filter(a=>!MA.has(a)).slice(0,8);out.kruis.breed_kandidaten=[...MA].filter(a=>!CA.has(a)).slice(0,8)}
+  const ok=['inzagelog','zorgcontacten','medewerkers'].every(id=>B[id]&&B[id].gevonden&&!B[id].ontbreekt_moet.length);
+  if(ok){
+    const h=(id,k)=>B[id].col[k]?B[id].col[k].h:null,va=B.inzagelog.acties||{verdeling:{}},orig=code=>{const t=SRC[B.inzagelog.tabel],i=B.inzagelog.col.actie.i,s2=new Set();for(const row of t.rows){const a=String(row[i]||'').trim();if(syn[a.toLowerCase()]===code)s2.add(a)}return[...s2]};
+    out.recept={naam:'AccessGuard-standaard '+spec.versie,sector:'ziekenhuis',
+      inzagelog:{tabel:B.inzagelog.tabel,tijdstip:h('inzagelog','tijdstip'),tijdformaat:'iso',gebruiker:h('inzagelog','gebruiker'),patient:h('inzagelog','patient'),actie:h('inzagelog','actie'),inzage_acties:['inzage','wijziging','afdruk','export'].flatMap(orig),btg_acties:orig('noodtoegang'),negeer_acties:orig('automatisch'),reden:h('inzagelog','reden'),uitsluiten_accounts:[...sys]},
+      medewerkers:{tabel:B.medewerkers.tabel,koppelsleutel:h('medewerkers','gebruiker'),koppel_fallback:'geen',achternaam:null,voorletters:null,naam:h('medewerkers','naam'),afdeling:h('medewerkers','afdeling'),functie:h('medewerkers','functie'),uit_dienst:h('medewerkers','uit_dienst'),uit_dienst_formaat:'iso',actief:null},
+      relaties:{tabel:B.zorgcontacten.tabel,patient:h('zorgcontacten','patient'),afdeling:h('zorgcontacten','afdeling'),datum:h('zorgcontacten','begin'),datum_tot:h('zorgcontacten','einde'),datumformaat:'iso',lege_einddatum:'zelfde_dag',soort:h('zorgcontacten','soort'),lopend_soorten:['verblijf','zorgtraject']},
+      rechten:B.rechten&&B.rechten.gevonden&&!B.rechten.ontbreekt_moet.length?{tabel:B.rechten.tabel,gebruiker:h('rechten','gebruiker'),groep:h('rechten','groep')}:null,
+      afdeling_mapping:{},breed_afdelingen:out.kruis.breed_kandidaten||[]};
+  }
+  out.bestanden=Object.fromEntries(Object.entries(B).map(([k,v])=>{const c=Object.assign({},v);delete c.col;return[k,c]}));
+  return out;
+}
 self.onmessage=e=>{
   const {rid,type,p}=e.data;let res;
   try{
@@ -1068,6 +1135,7 @@ self.onmessage=e=>{
     else if(type==='scn_load'){SRC=genScenario(p.id);res={tabellen:Object.entries(SRC).map(([n,t])=>({tabel:n,regels:t.rows.length,kolommen:t.headers}))}}
     else if(type==='scn_files'){SRC={};p.files.forEach(f=>{SRC[f.name]=parseCsv(f.text)});res={tabellen:Object.entries(SRC).map(([n,t])=>({tabel:n,regels:t.rows.length,kolommen:t.headers}))}}
     else if(type==='survey'){res=survey()}
+    else if(type==='validate'){res=validateSpec(p.spec)}
     else if(type==='dry'){const t=performance.now();res=dryRun(p.recept);res.ms=Math.round(performance.now()-t)}
     else if(type==='approve'){const {D:D2}=transform(p.recept);D=D2;META={};for(const k in D)META[k]={src:'assistent',name:p.recept.naam||'Recept',rows:D[k].length};LIB.push({naam:p.recept.naam||'Recept',herkomst:'goedgekeurd door '+(p.door||'functioneel beheer')+' op '+new Date().toISOString().slice(0,10),fp:libFingerprint(SRC),recept:p.recept});res={meta:META}}
     else if(type==='leak'){res=leakCheck(p.text,p.allow)}
@@ -1723,14 +1791,16 @@ function newOrg(domain,email,name,provider){
   return{id:'o'+fnv(domain),domain,name:'',created:Date.now(),onboarded:false,
     members:[{name,email,status:'actief'}],keySet:false,systemen:[],
     it:{provider:PROVIDERS.some(p=>p.id===provider)?provider:'entra',mode:'it',naam:'',email:'',status:'open',sentAt:null,confirmedAt:null},
-    billing:{price:PRICING.perOrg,paid:false,card:null,invoices:[],factuurEmail:email,referentie:''}};
+    billing:{price:PRICING.perOrg,paid:false,card:null,invoices:[],factuurEmail:email,referentie:''},
+    plan:'proef',poc:{start:Date.now(),vergelijk:{},offline:false,offlineAuto:false,trust:false,fb:{naam:'',email:'',status:'open'},kwaliteit:null}};
 }
 function demoOrg(){
   return{id:'demo',domain:'voorbeeldzorg.nl',name:'Zorggroep Voorbeeld',created:Date.now()-40*DAY,onboarded:true,
     members:[{name:'Demo Gebruiker',email:'demo@voorbeeldzorg.nl',status:'actief'},{name:'Sanne de Wit',email:'s.dewit@voorbeeldzorg.nl',status:'actief'}],
     keySet:true,systemen:['HiX','AFAS'],
     it:{provider:'entra',mode:'it',naam:'Ahmed (ICT)',email:'ict@voorbeeldzorg.nl',status:'klaar',sentAt:Date.now()-38*DAY,confirmedAt:Date.now()-37*DAY},
-    billing:{price:PRICING.perOrg,paid:true,card:{merk:'Visa',last4:'4242',geldig:'12/29'},factuurEmail:'demo@voorbeeldzorg.nl',referentie:'',invoices:[{nr:'INV-2026-0010',datum:Date.UTC(2026,9,1),bedrag:119.79,status:'betaald'}]}};
+    billing:{price:PRICING.perOrg,paid:false,card:null,factuurEmail:'demo@voorbeeldzorg.nl',referentie:'',invoices:[]},
+    plan:'proef',poc:{start:Date.now()-11*DAY,vergelijk:{},offline:false,offlineAuto:false,trust:false,fb:{naam:'',email:'',status:'open'},kwaliteit:null}};
 }
 
 /* ---------- Inlogschermen ---------- */
@@ -1767,6 +1837,7 @@ function routeLogin(email,name,provider){
   email=email.trim().toLowerCase();const domain=email.split('@')[1];
   const o=ORGS[domain];
   if(o){
+    normalizeOrg(o);
     const m=o.members.find(x=>x.email===email&&x.status!=='verwijderd');
     if(!m){const first=activeMembers(o)[0];gate.err='Je hebt nog geen toegang tot '+(o.name||domain)+'. Vraag '+(first?first.name:'een collega')+' om je toe te voegen.';renderGate();return}
     if(m.status==='uitgenodigd')m.status='actief';if(!m.name)m.name=name;
@@ -1817,7 +1888,7 @@ const OB_STEPS=[
   {id:'it',titel:'Inloggen regelen',wie:'Jij en de IT-beheerder'},
   {id:'key',titel:'Wachtwoordzin',wie:'Jij'},
   {id:'bron',titel:'Bronnen koppelen',wie:'Jij of functioneel beheer'},
-  {id:'pay',titel:'Abonnement',wie:'Jij'},
+  {id:'pay',titel:'Proefperiode of abonnement',wie:'Jij'},
   {id:'done',titel:'Klaar',wie:''}];
 function sourcesGuide(){
   return'<h4>Welke gegevens zijn nodig?</h4><div class="tablebox"><table><thead><tr><th>Gegevens</th><th>Wat staat erin</th><th>Uit welk systeem</th><th></th></tr></thead><tbody>'+
@@ -1853,19 +1924,22 @@ function renderOnboarding(){
       SYSTEMS.map(([g,list])=>'<fieldset class="prep"><legend><b>'+esc(g)+'</b></legend><div class="row">'+list.map(x=>{const v=x==='Anders'?g+': anders':x,id='sy-'+fnv(g+x);return'<label class="row small" style="gap:6px" for="'+id+'"><input type="checkbox" id="'+id+'" data-sys="'+esc(v)+'"'+(org.systemen.includes(v)?' checked':'')+'>'+esc(x)+'</label>'}).join('')+'</div></fieldset>').join('')+
       sourcesGuide()+'<p class="small"><b>Je hoeft nu nog niets te koppelen.</b> Dat doe je na de inrichting via Bron koppelen. Tot die tijd kun je oefenen met voorbeeldgegevens.</p>';
   }else if(s.id==='pay'){
-    body=priceTable()+
+    const pl=org.plan||'proef';
+    body='<p>Begin met een proefperiode van '+POC_DAYS+' dagen, of sluit meteen een abonnement af.</p><div class="rolegrid">'+
+      [['proef','Proefperiode van '+POC_DAYS+' dagen','Gratis. Je test met jullie eigen gegevens en gaat zelf na of het veilig is. Je hoeft nu niet te betalen.'],['abonnement','Meteen een abonnement',eur(bill(org).tot)+' per maand, inclusief btw. Maandelijks opzegbaar.']].map(([k,t,w])=>'<label class="rolecard" for="pl-'+k+'" data-act="plan" data-plan="'+k+'" style="cursor:pointer"><span class="row" style="gap:8px"><input type="radio" name="plan" id="pl-'+k+'"'+(pl===k?' checked':'')+'><b>'+t+'</b></span><span class="small">'+w+'</span></label>').join('')+'</div>'+
+      (pl==='proef'?'<p class="small muted">Na de proefperiode sluit je het abonnement af onder Abonnement. Doe je dat niet, dan stopt de toegang. Er wordt niets automatisch afgeschreven.</p>':priceTable()+
       '<label class="small" for="bMail">Facturen sturen naar</label><input class="inp" id="bMail" type="email" value="'+esc(org.billing.factuurEmail)+'">'+
-      '<label class="small" for="bRef">Inkoopnummer of referentie (niet verplicht)</label><input class="inp" id="bRef" value="'+esc(org.billing.referentie)+'">'+payBox();
+      '<label class="small" for="bRef">Inkoopnummer of referentie (niet verplicht)</label><input class="inp" id="bRef" value="'+esc(org.billing.referentie)+'">'+payBox());
   }else{
     const it=org.it;
     body='<p class="lead">AccessGuard is klaar voor '+esc(org.name)+'.</p>'+
       '<ul class="checks">'+
-      [['Inloggen met werkaccount',it.status==='klaar'||it.status==='nvt',itStatusText(it)],['Wachtwoordzin',org.keySet,'Ingesteld'],['Abonnement',org.billing.paid,eur(bill(org).tot)+' per maand'],['Eerste bron','',"Koppel je eerste bron via Bron koppelen."]]
+      [['Inloggen met werkaccount',it.status==='klaar'||it.status==='nvt',itStatusText(it)],['Wachtwoordzin',org.keySet,'Ingesteld'],org.plan==='proef'?['Proefperiode',true,POC_DAYS+' dagen, tot '+fmtD(trialEnd(org))]:['Abonnement',org.billing.paid,eur(bill(org).tot)+' per maand'],['Gegevens aanleveren','',org.plan==='proef'?'Vraag functioneel beheer om de bestanden en controleer ze in de proefperiode.':'Koppel je eerste bron via Bron koppelen.']]
         .map(([t,ok,w])=>'<li><span class="res '+(ok===''?'wait':ok?'ok':'wait')+'">'+(ok===''?'volgende stap':ok?'klaar':'loopt')+'</span><span><b>'+esc(t)+'</b><span class="why">'+esc(w)+'</span></span></li>').join('')+'</ul>'+
       '<p class="small muted">Tot er een echte bron is gekoppeld, zie je voorbeeldgegevens.</p>';
   }
   const nav='<div class="row ob-nav">'+(ob.step>0&&s.id!=='done'?'<button class="btn" type="button" data-act="obback">Vorige</button>':'')+
-    (s.id==='done'?'<button class="btn primary" type="button" data-act="obfinish">Koppel je eerste bron</button><button class="btn" type="button" data-act="obfinish" data-to="signalen">Eerst rondkijken met voorbeeldgegevens</button>':'<button class="btn primary" type="button" data-act="obnext">'+(s.id==='pay'?'Afronden':'Volgende')+'</button>')+
+    (s.id==='done'?'<button class="btn primary" type="button" data-act="obfinish"'+(org.plan==='proef'?' data-to="poc">Start de proefperiode':'>Koppel je eerste bron')+'</button><button class="btn" type="button" data-act="obfinish" data-to="signalen">Eerst rondkijken met voorbeeldgegevens</button>':'<button class="btn primary" type="button" data-act="obnext">'+(s.id==='pay'?(org.plan==='proef'?'Start de proefperiode':'Afronden'):'Volgende')+'</button>')+
     '<span class="err" id="obErr" role="status">'+esc(gate.err||'')+'</span></div>';
   return'<div class="obwrap"><aside class="obside"><div class="glogo">AccessGuard</div><p class="small muted">Inrichting voor '+esc(org.name||org.domain)+'</p><ol class="obsteps">'+
     OB_STEPS.map((x,i)=>'<li class="'+(i<ob.step?'done':i===ob.step?'cur':'')+'"><span class="n">'+(i+1)+'</span><span><b>'+esc(x.titel)+'</b>'+(x.wie?'<span class="muted small">'+esc(x.wie)+'</span>':'')+'</span></li>').join('')+
@@ -1878,7 +1952,7 @@ async function obNext(){
     if(it.mode==='it'&&it.status!=='verstuurd'&&it.status!=='klaar'){gate.err='Verstuur eerst de mail aan de IT-beheerder. Of kies dat je het zelf regelt.';return renderGate()}
     if(it.mode==='zelf'&&it.status!=='klaar'){gate.err='Klik op "Ik heb het ingesteld" als het klaar is. Of laat het de IT-beheerder doen.';return renderGate()}}
   if(s.id==='key'&&!org.keySet){gate.err='Stel eerst de wachtwoordzin in.';return renderGate()}
-  if(s.id==='pay'){org.billing.factuurEmail=$('#bMail').value.trim();org.billing.referentie=$('#bRef').value.trim();if(!validEmail(org.billing.factuurEmail)){gate.err='Vul een geldig e-mailadres voor de facturen in.';return renderGate()}if(!org.billing.paid){gate.err='Rond eerst de betaling af.';return renderGate()}}
+  if(s.id==='pay'&&org.plan==='abonnement'){org.billing.factuurEmail=$('#bMail').value.trim();org.billing.referentie=$('#bRef').value.trim();if(!validEmail(org.billing.factuurEmail)){gate.err='Vul een geldig e-mailadres voor de facturen in.';return renderGate()}if(org.plan==='abonnement'&&!org.billing.paid){gate.err='Rond eerst de betaling af. Of kies de proefperiode.';return renderGate()}}
   ob.step=Math.min(OB_STEPS.length-1,ob.step+1);org.obStep=ob.step;saveOrgs();renderGate();try{window.scrollTo(0,0)}catch(_){}
 }
 
@@ -1903,6 +1977,7 @@ function applyRole(){
   $('#userName').textContent=session.name+(org&&org.name?' · '+org.name:'');
   const it=org&&org.it,wait=it&&it.status==='verstuurd';
   $('#itPill').hidden=!wait;
+  if(org){normalizeOrg(org);$('#navPoc').textContent=org.plan==='proef'?'Proefperiode':'Aanleveren';$('#pocTitle').textContent=org.plan==='proef'?'Proefperiode':'Gegevens aanleveren'}
 }
 async function logout(){
   if(session)log('Uitgelogd',session.name);
@@ -1925,13 +2000,15 @@ function renderTeam(){
 }
 function renderBilling(){
   if(!org)return;const b=org.billing;
-  $('#billBox').innerHTML='<div class="grid"><div class="card"><h3>Je abonnement</h3>'+priceTable()+'<p class="small muted">Volgende factuur op '+fmtD(nextMonth().getTime())+'.</p></div>'+
+  normalizeOrg(org);const tr=org.plan==='proef';
+  $('#billBox').innerHTML=(tr?'<div class="card"><div class="head"><h3>Je zit in de proefperiode</h3><span class="tag">dag '+trialDay(org)+' van '+POC_DAYS+'</span></div><p class="small">De proefperiode loopt tot '+fmtD(trialEnd(org))+'. Rond de betaling af om door te gaan. Alles wat je hebt ingesteld blijft staan.</p><button class="linkbtn small" data-goto="poc">Bekijk de voortgang van de proefperiode</button></div>':'')+
+    '<div class="grid"><div class="card"><h3>'+(tr?'Abonnement afsluiten':'Je abonnement')+'</h3>'+priceTable()+'<p class="small muted">'+(tr?'Maandelijks opzegbaar.':'Volgende factuur op '+fmtD(nextMonth().getTime())+'.')+'</p></div>'+
     '<div class="card"><h3>Betaling</h3>'+payBox()+'<label class="small" for="bMail2">Facturen sturen naar</label><input class="inp" id="bMail2" type="email" value="'+esc(b.factuurEmail)+'"><button class="btn" type="button" data-act="savebill">Opslaan</button><p class="small muted">Kaart wijzigen gaat in de echte versie via het klantportaal van de betaalprovider.</p></div></div>'+
     '<div class="card"><h3>Facturen</h3>'+(b.invoices.length?'<div class="tablebox" style="border:0"><table><thead><tr><th>Nummer</th><th>Datum</th><th>Bedrag</th><th>Status</th></tr></thead><tbody>'+b.invoices.slice().reverse().map(i=>'<tr><td class="mono">'+esc(i.nr)+'</td><td>'+fmtD(i.datum)+'</td><td>'+eur(i.bedrag)+'</td><td>'+esc(i.status)+'</td></tr>').join('')+'</tbody></table></div>':'<p class="small muted">Nog geen facturen.</p>')+'</div>';
 }
 function renderSetup(){
-  if(!org)return;const it=org.it;
-  const items=[['Organisatie',!!org.name,org.name||'Nog geen naam'],['Inloggen met werkaccount',it.status==='klaar'||it.status==='nvt',itStatusText(it)],['Wachtwoordzin',org.keySet,org.keySet?'Ingesteld':'Nog niet ingesteld'],['Eerste bron gekoppeld',activeSource.type==='recept',activeSource.type==='recept'?activeSource.naam:'Nog niet gekoppeld'],['Abonnement',!!org.billing.paid,org.billing.paid?'Betaald':'Nog niet betaald']];
+  if(!org)return;normalizeOrg(org);const it=org.it;
+  const items=[['Organisatie',!!org.name,org.name||'Nog geen naam'],['Inloggen met werkaccount',it.status==='klaar'||it.status==='nvt',itStatusText(it)],['Wachtwoordzin',org.keySet,org.keySet?'Ingesteld':'Nog niet ingesteld'],['Eerste bron gekoppeld',activeSource.type==='recept',activeSource.type==='recept'?activeSource.naam:'Nog niet gekoppeld'],org.plan==='proef'?['Abonnement',false,'Proefperiode tot '+fmtD(trialEnd(org))]:['Abonnement',!!org.billing.paid,org.billing.paid?'Betaald':'Nog niet betaald']];
   const done=items.filter(x=>x[1]).length;
   $('#setupBox').innerHTML='<div class="card"><div class="head"><h3>Voortgang</h3><span class="tag">'+done+' van '+items.length+' klaar</span></div><div class="bar" style="height:6px"><i style="width:'+Math.round(100*done/items.length)+'%;background:var(--ok)"></i></div>'+
     '<ul class="checks">'+items.map(([t,ok,w])=>'<li><span class="res '+(ok?'ok':'wait')+'">'+(ok?'klaar':'open')+'</span><span><b>'+esc(t)+'</b><span class="why">'+esc(w)+'</span></span></li>').join('')+'</ul>'+
@@ -1942,18 +2019,265 @@ function renderSetup(){
 function demoPay(){
   const b=bill(org);org.billing.paid=true;org.billing.card={merk:'Visa',last4:'4242',geldig:'12/29'};
   org.billing.invoices.push({nr:'INV-'+new Date().getUTCFullYear()+'-'+String(org.billing.invoices.length+1).padStart(4,'0'),datum:Date.now(),bedrag:b.tot,status:'betaald (demo)'});
-  saveOrgs();if(session&&$('#gate').hidden)log('Betaling geregeld','Creditcard (demo), '+eur(b.tot)+' per maand');
+  const wasTrial=org.plan==='proef';org.plan='abonnement';
+  saveOrgs();if(session&&$('#gate').hidden)log(wasTrial?'Abonnement afgesloten':'Betaling geregeld','Creditcard (demo), '+eur(b.tot)+' per maand');
 }
 const SYSTEMS=[['Ziekenhuis-EPD',['HiX','Epic','Anders']],['Zorgdossier (ECD)',['Nedap Ons','Ysis','Anders']],['Personeelssysteem (HR)',['AFAS','Youforce','Anders']]];
 
+/* ---------- Aanleverspecificatie (versie 1.0) ----------
+   Eén model, drie lezers: gebruiker (b1), functioneel beheer (fb), IT en auditor (fhir). */
+const SPEC={versie:'1.0',bestanden:[
+  {id:'inzagelog',naam:'inzagelog.csv',titel:'Inzagelog',nodig:'verplicht',bron:'EPD of ECD',b1:'Wie heeft wanneer welk dossier geopend.',std:'FHIR AuditEvent, IHE BALP; velden volgens NEN 7513',velden:[
+    {k:'tijdstip',eis:'moet',type:'datum',b1:'Wanneer het dossier werd geopend',fb:'Datum en tijd: jjjj-mm-ddTuu:mm:ss',vb:'2026-10-14T09:32:10',it:'AuditEvent.recorded',mist:'Zonder tijdstip kunnen we niet zien of er een zorgcontact was.'},
+    {k:'gebruiker',eis:'moet',b1:'Wie keek',fb:'Inlognaam of accountcode. Dezelfde als in medewerkers.csv',vb:'JANSENA',it:'AuditEvent.agent.who.identifier',mist:'Zonder gebruiker weten we niet wie keek.'},
+    {k:'patient',eis:'moet',b1:'In welk dossier',fb:'Patiënt- of cliëntnummer, of een code. Dezelfde als in zorgcontacten.csv',vb:'1004211',it:'AuditEvent.entity.what (Patient)',mist:'Zonder patiënt weten we niet welk dossier is geopend.'},
+    {k:'actie',eis:'moet',b1:'Wat er gebeurde',fb:'inzage, wijziging, afdruk, export, noodtoegang of automatisch. Eigen codes mogen ook; die vertalen we.',vb:'inzage',it:'AuditEvent.action + subtype (zie waardenlijst)',mist:'Zonder actie tellen we alles als inzage, ook automatische handelingen.'},
+    {k:'reden',eis:'bij noodtoegang',b1:'De reden bij noodtoegang',fb:'Vrije tekst. Alleen nodig bij noodtoegang',vb:'Spoedopvang, patiënt niet aanspreekbaar',it:'AuditEvent.purposeOfEvent / agent.purposeOfUse',mist:'Zonder reden kunnen we noodtoegang niet beoordelen.'},
+    {k:'soort_account',eis:'aanbevolen',b1:'Of een persoon of een systeem keek',fb:'persoon of systeem',vb:'persoon',it:'AuditEvent.agent.type',mist:'Systeemaccounts moeten we dan zelf herkennen.'}]},
+  {id:'zorgcontacten',naam:'zorgcontacten.csv',titel:'Zorgcontacten',nodig:'verplicht',bron:'EPD of ECD',b1:'Wanneer een patiënt op welke afdeling zorg kreeg. Dat laat zien of een medewerker een reden had om te kijken.',std:'FHIR Encounter, Appointment, EpisodeOfCare, CareTeam (nl-core waar mogelijk)',velden:[
+    {k:'patient',eis:'moet',b1:'Welke patiënt',fb:'Hetzelfde nummer of dezelfde code als in inzagelog.csv',vb:'1004211',it:'Encounter.subject',mist:'Zonder patiënt kunnen we het contact niet koppelen.'},
+    {k:'afdeling',eis:'moet',b1:'Bij welke afdeling, locatie of team',fb:'Precies dezelfde schrijfwijze als in medewerkers.csv',vb:'Cardiologie',it:'Encounter.serviceProvider / serviceType, of CareTeam.name',mist:'Zonder afdeling weten we niet wie zorg gaf.'},
+    {k:'begin',eis:'moet',type:'datum',b1:'Wanneer het begon',fb:'jjjj-mm-dd',vb:'2026-10-02',it:'Encounter.period.start',mist:'Zonder datum kunnen we niet kijken of het rond de inzage was.'},
+    {k:'einde',eis:'aanbevolen',type:'datum',b1:'Wanneer het eindigde',fb:'jjjj-mm-dd. Leeg bij één dag. Leeg bij een verblijf of zorgtraject dat nog loopt',vb:'2026-10-06',it:'Encounter.period.end',mist:'Dan rekenen we elk contact als één dag.'},
+    {k:'soort',eis:'aanbevolen',b1:'Wat voor contact',fb:'afspraak, opname, consult, verblijf of zorgtraject',vb:'opname',it:'Encounter.class / EpisodeOfCare',mist:'Dan weten we niet of een contact zonder einddatum nog loopt.'}]},
+  {id:'medewerkers',naam:'medewerkers.csv',titel:'Medewerkers',nodig:'verplicht',bron:'Personeelssysteem (HR)',b1:'Wie er werkt, op welke afdeling, en wie uit dienst is.',std:'SCIM 2.0 User (met enterprise-uitbreiding)',velden:[
+    {k:'gebruiker',eis:'moet',b1:'Het account van de medewerker',fb:'Dezelfde inlognaam als in inzagelog.csv',vb:'JANSENA',it:'SCIM User.userName',mist:'Zonder account kunnen we inzages niet aan medewerkers koppelen.'},
+    {k:'naam',eis:'aanbevolen',b1:'De naam',fb:'Voor- en achternaam',vb:'Anouk Jansen',it:'SCIM User.name.formatted',mist:'Dan zie je alleen de accountcode, ook als je namen wilt tonen.'},
+    {k:'afdeling',eis:'moet',b1:'Waar de medewerker werkt',fb:'Dezelfde schrijfwijze als in zorgcontacten.csv',vb:'Cardiologie',it:'SCIM enterprise User.department',mist:'Zonder afdeling kunnen we het zorgcontact niet controleren.'},
+    {k:'functie',eis:'aanbevolen',b1:'De functie',fb:'Functienaam',vb:'Verpleegkundige',it:'SCIM User.title',mist:'Dan kunnen we rechten niet met de functie vergelijken.'},
+    {k:'uit_dienst',eis:'aanbevolen',type:'datum',b1:'Wanneer iemand uit dienst ging',fb:'jjjj-mm-dd. Leeg als iemand nog in dienst is',vb:'2026-10-13',it:'SCIM User.active = false',mist:'Dan zien we niet of iemand na uit dienst nog keek.'}]},
+  {id:'rechten',naam:'rechten.csv',titel:'Rechten',nodig:'aanbevolen',bron:'EPD of ECD (autorisaties)',b1:'Welke rechten een account heeft. Nodig voor de controle op toegangsrechten.',std:'SCIM 2.0 Group',velden:[
+    {k:'gebruiker',eis:'moet',b1:'Het account',fb:'Dezelfde inlognaam als in medewerkers.csv',vb:'JANSENA',it:'SCIM Group.members.value',mist:'Zonder account weten we niet van wie de rechten zijn.'},
+    {k:'groep',eis:'moet',b1:'De gebruikersgroep of rol',fb:'Naam van de groep of rol',vb:'EPD-Verpleegkunde',it:'SCIM Group.displayName',mist:'Zonder groep weten we niet welke rechten iemand heeft.'}]}],
+  acties:[
+    {code:'inzage',fhir:'R (read)',b1:'Een dossier bekijken',syn:['inz','view','read','r','chart review','note viewed','dossier.geopend','medicatie.bekeken','bekeken','inzien']},
+    {code:'wijziging',fhir:'U (update)',b1:'Iets in een dossier veranderen of toevoegen',syn:['wij','update','u','c','create','order entry','rapportage.toegevoegd','wijzigen','toevoegen']},
+    {code:'afdruk',fhir:'R + subtype print',b1:'Een dossier afdrukken',syn:['prt','print','report printed','zorgplan.afgedrukt','afgedrukt']},
+    {code:'export',fhir:'R + subtype export',b1:'Gegevens uit een dossier exporteren',syn:['exp','download','e']},
+    {code:'noodtoegang',fhir:'R + purposeOfEvent ETREAT',b1:'Een dossier openen met noodtoegang',syn:['btg','break-the-glass access','break the glass','break-the-glass','nood']},
+    {code:'automatisch',fhir:'niet als inzage geteld',b1:'Iets dat het systeem zelf deed, zonder mens',syn:['background prefetch','sessie.vernieuwd','prefetch','systeem','auto']}]};
+
+/* ================= Proefperiode (PoC) en aanleveren ================= */
+const POC_DAYS=30;
+let pocLayer='jij',pocVal=null,pocDry=null,pocRecept=null,pocMsg='',pocBusy=false;
+function normalizeOrg(o){
+  if(!o)return o;
+  if(!o.plan)o.plan=o.billing&&o.billing.paid?'abonnement':'proef';
+  if(!o.poc)o.poc={start:o.created||Date.now(),vergelijk:{},offline:false,offlineAuto:false,trust:false,fb:{naam:'',email:'',status:'open'},kwaliteit:null};
+  if(!o.poc.fb)o.poc.fb={naam:'',email:'',status:'open'};
+  if(!o.poc.vergelijk)o.poc.vergelijk={};
+  return o;
+}
+const trialEnd=o=>o.poc.start+POC_DAYS*DAY;
+const trialDay=o=>Math.min(POC_DAYS,Math.max(1,Math.floor((Date.now()-o.poc.start)/DAY)+1));
+function pocCopy(text,msgId){const m=document.getElementById(msgId);
+  const fb=()=>{if(m){m.className='err';m.textContent='Kopiëren lukte niet. Selecteer de tekst zelf.'}};
+  try{navigator.clipboard.writeText(text).then(()=>{if(m){m.className='toast';m.textContent='Gekopieerd.'}},fb)}catch(_){fb()}}
+function templateCsv(f){return f.velden.map(v=>v.k).join(';')+'\n'+f.velden.map(v=>v.vb).join(';')}
+function fbMail(){
+  const fb=org.poc.fb,files=SPEC.bestanden.map(f=>'- '+f.naam+' ('+f.titel.toLowerCase()+', '+f.bron+(f.nodig==='aanbevolen'?', aanbevolen':'')+')\n  kolommen: '+f.velden.map(v=>v.k+(v.eis==='moet'?'*':'')).join(', ')).join('\n');
+  return{onderwerp:'Verzoek: exports klaarzetten voor de proefperiode van AccessGuard',
+    tekst:'Hoi '+(fb.naam||'collega')+',\n\nWe doen een proefperiode met AccessGuard, voor de controle op dossierinzage (NEN 7513). Wil jij deze exports klaarzetten? Eén maand aan gegevens is genoeg.\n\n'+files+'\n\n* = verplicht. Gebruik een puntkomma of komma tussen de kolommen en een kopregel met de kolomnamen. Datums als jjjj-mm-dd, tijden als jjjj-mm-ddTuu:mm:ss.\n\nTips:\n- Gebruik in alle bestanden hetzelfde patiëntnummer en dezelfde inlognaam.\n- Je mag patiëntnummers vervangen door codes, zolang je overal dezelfde methode en sleutel gebruikt. Dan ziet AccessGuard geen echte nummers.\n- Heten de kolommen of codes in jullie systeem anders? Lever aan wat er is. AccessGuard vertaalt het en laat zien wat er nog mist.\n\nDe volledige uitleg met voorbeelden staat in AccessGuard onder Proefperiode, bij "Voor functioneel beheer".\n\nDank je wel!\n'+(session?session.name:'')};
+}
+function pct(x){return x==null?'—':String(x).replace('.',',')+'%'}
+
+/* ---------- Bevindingen van de controle, in drie lagen ---------- */
+function valFindings(v){
+  const F=[],add=(lvl,bestand,b1,fbt,it)=>F.push({lvl,bestand,b1,fb:fbt||b1,it:it||fbt||b1});
+  const B=v.bestanden;
+  SPEC.bestanden.forEach(f=>{
+    const b=B[f.id];
+    if(!b||!b.gevonden){
+      if(f.nodig==='verplicht')add('fout',f.titel,'Het bestand met '+f.titel.toLowerCase()+' ontbreekt. '+f.b1+' Zonder dit bestand kan AccessGuard niet controleren.','Lever '+f.naam+' aan met de kolommen '+f.velden.filter(x=>x.eis==='moet').map(x=>x.k).join(', ')+'. Heten de kolommen anders? Gebruik dan Bron koppelen: de assistent vertaalt ze.','Geen tabel gevonden met de verplichte velden van '+f.id+' ('+f.std+').');
+      else add('let',f.titel,'Het bestand met '+f.titel.toLowerCase()+' ontbreekt. De controle op toegangsrechten wordt dan overgeslagen.','Lever '+f.naam+' aan voor de controle op toegangsrechten (aanbevolen).',f.std+': niet aangeleverd; A-controles beperkt.');
+      return}
+    b.ontbreekt_moet.forEach(k=>{const x=f.velden.find(y=>y.k===k);add('fout',f.titel,x.mist,'In '+b.tabel+' mist de kolom "'+k+'". '+x.fb+'.','Verplicht veld '+k+' → '+x.it+' ontbreekt.')});
+    b.ontbreekt_aanbevolen.forEach(k=>{const x=f.velden.find(y=>y.k===k);add('let',f.titel,x.mist,'In '+b.tabel+' mist de kolom "'+k+'" (aanbevolen). '+x.fb+'.','Aanbevolen veld '+k+' → '+x.it+' ontbreekt.')});
+    Object.entries(b.leeg||{}).forEach(([k,p])=>{if(p>=1)add(p>=5?'fout':'let',f.titel,'In '+pct(p)+' van de regels in '+f.titel.toLowerCase()+' is "'+k+'" leeg.','Kolom "'+k+'" in '+b.tabel+' is leeg in '+pct(p)+' van de regels. Vul die aan of laat die regels weg.','Verplicht veld '+k+' leeg in '+p+'% van de records.')});
+    Object.entries(b.datum||{}).forEach(([k,d])=>{
+      if(d.leesbaar_pct<99)add('fout',f.titel,'Een deel van de datums in '+f.titel.toLowerCase()+' kunnen we niet lezen ('+pct(d.leesbaar_pct)+' leesbaar).','Kolom "'+k+'" in '+b.tabel+': '+pct(d.leesbaar_pct)+' leesbaar. Gebruik jjjj-mm-dd of jjjj-mm-ddTuu:mm:ss.','Datumveld '+k+': '+d.leesbaar_pct+'% parseerbaar; ISO 8601 vereist.');
+      else if(d.iso_pct<99)add('let',f.titel,'De datums staan in een andere notatie. AccessGuard herkent ze toch.','Kolom "'+k+'" gebruikt een andere notatie dan jjjj-mm-dd. Dat werkt, maar de standaard is jjjj-mm-dd.','Niet-ISO 8601 ('+(100-d.iso_pct).toFixed(1)+'%); tolerant geparseerd.')});
+    if(b.acties){
+      const onb=Object.keys(b.acties.onbekend),ver=Object.entries(b.acties.vertaald);
+      if(onb.length)add('fout',f.titel,'In de inzagelog staan soorten handelingen die AccessGuard niet kent: '+onb.slice(0,5).join(', ')+'. Vraag functioneel beheer wat ze betekenen, of gebruik Bron koppelen.','Waarden in "actie" die niet in de waardenlijst staan: '+onb.slice(0,8).join(', ')+'. Gebruik inzage, wijziging, afdruk, export, noodtoegang of automatisch.','Geen ConceptMap-match voor actie: '+onb.join(', ')+'.');
+      if(ver.length)add('ok',f.titel,'Een paar soorten handelingen hebben een andere naam. AccessGuard heeft ze vertaald.','Vertaald: '+ver.slice(0,8).map(([a,c])=>a+' → '+c).join(', ')+'.','ConceptMap toegepast: '+ver.map(([a,c])=>a+'→'+c).join(', ')+'.');
+      const auto=b.acties.verdeling.automatisch||0;if(auto)add('ok',f.titel,nf(auto)+' regels zijn automatische handelingen. Die tellen niet als inzage.','Regels met actie "automatisch": '+nf(auto)+'. Niet meegeteld.','action=automatisch → uitgesloten van analyse.')}
+    if(b.systeemaccounts&&b.systeemaccounts.length)add('ok',f.titel,b.systeemaccounts.length+' systeemaccount(s) herkend. Die tellen niet als persoon.','Accounts met soort_account = systeem: '+b.systeemaccounts.slice(0,5).join(', ')+'. Uitgesloten van de controles.','agent.type=systeem → uitgesloten.');
+    if(f.id==='inzagelog'&&b.pseudoniem)add('ok',f.titel,'Patiëntnummers zijn als code aangeleverd. Goed: AccessGuard hoeft zo geen echte nummers te zien.','De patiëntkolom bevat codes in plaats van nummers. Gebruik in alle bestanden dezelfde methode en sleutel.','Bronpseudonimisering gedetecteerd (hex ≥ 12 tekens).');
+  });
+  const K=v.kruis;
+  if(K.gebruikers_pct!=null){if(K.gebruikers_pct<97)add(K.gebruikers_pct<80?'fout':'let','Samenhang','Van de personen in de inzagelog staat '+pct(K.gebruikers_pct)+' in de medewerkerslijst. Dat moet bijna iedereen zijn.','Inlognamen in inzagelog.csv en medewerkers.csv komen voor '+pct(K.gebruikers_pct)+' overeen. Gebruik in beide dezelfde inlognaam. Systeemaccounts markeren met soort_account = systeem.','Join agent.who ↔ User.userName: '+K.gebruikers_pct+'%.');else add('ok','Samenhang','Bijna alle personen in de inzagelog staan in de medewerkerslijst ('+pct(K.gebruikers_pct)+').')}
+  if(K.patienten_pct!=null){if(K.patienten_pct<50)add('let','Samenhang','Bij veel inzages staat de patiënt niet in de zorgcontacten. Gebruiken beide bestanden hetzelfde nummer of dezelfde code?','Patiënten uit inzagelog.csv gevonden in zorgcontacten.csv: '+pct(K.patienten_pct)+'. Controleer of beide hetzelfde nummer of dezelfde pseudonimiseringssleutel gebruiken.','Join entity.what ↔ Encounter.subject: '+K.patienten_pct+'%.');else add('ok','Samenhang','Patiënten in de inzagelog en in de zorgcontacten komen overeen ('+pct(K.patienten_pct)+').')}
+  if(K.afdeling_zonder_match&&K.afdeling_zonder_match.length)add('let','Samenhang','Een paar afdelingsnamen in de zorgcontacten komen niet voor in de medewerkerslijst: '+K.afdeling_zonder_match.join(', ')+'.','Gebruik in zorgcontacten.csv en medewerkers.csv dezelfde schrijfwijze voor afdelingen. Niet gevonden: '+K.afdeling_zonder_match.join(', ')+'.','Afdeling-join op exacte waarde; geen ConceptMap voor afdelingen.');
+  if(K.breed_kandidaten&&K.breed_kandidaten.length)add('ok','Samenhang','Deze afdelingen hebben zelf geen zorgcontacten: '+K.breed_kandidaten.join(', ')+'. We gaan ervan uit dat ze alle patiënten mogen zien. Klopt dat niet, pas het dan aan bij Instellingen.','Afdelingen zonder eigen zorgcontacten, ingesteld als "mag alles zien": '+K.breed_kandidaten.join(', ')+'.','breed_afdelingen afgeleid: '+K.breed_kandidaten.join(', ')+'.');
+  return F;
+}
+function pocCriteria(){
+  const q=org.poc.kwaliteit,g=n=>q&&q.poorten?q.poorten.find(x=>x.naam===n):null,V=org.poc.vergelijk;
+  const st=(ok,partial)=>ok?'ok':partial?'let':'open';
+  const C=[];
+  C.push({t:'Bestanden volgens afspraak',s:q?st(q.fouten===0,q.fouten>0):'open',w:q?(q.fouten?q.fouten+' punt(en) om op te lossen':'Alles in orde'):'Nog niet gecontroleerd'});
+  [['Inzages zijn aan een medewerker gekoppeld','Inzages gekoppeld aan een medewerker'],['Bij inzages is een zorgcontact gevonden','Zorgcontact gevonden bij inzages'],['Niet te veel signalen','Niet te veel signalen']].forEach(([n,t])=>{const x=g(n);C.push({t,s:x?(x.ok?'ok':'let'):'open',w:x?x.waarde+' (moet: '+x.norm+')':'Nog niet getest'})});
+  const h=+V.huidig||0,gv=+V.gevonden||0;C.push({t:'Bekende gevallen teruggevonden',s:h?(gv>=h?'ok':gv/h>=.8?'let':'let'):'open',w:h?gv+' van '+h+' gevallen uit jullie huidige werkwijze':'Nog niet vergeleken'});
+  C.push({t:'Offline-test gedaan',s:org.poc.offline||org.poc.offlineAuto?'ok':'open',w:org.poc.offlineAuto?'Gemeten: controles werkten zonder internet':org.poc.offline?'Bevestigd door '+(org.poc.offlineBy||'gebruiker'):'Nog niet gedaan'});
+  C.push({t:'Veiligheidsinformatie besproken met FG of CISO',s:org.poc.trust?'ok':'open',w:org.poc.trust?'Bevestigd':'Nog niet gedaan'});
+  return C;
+}
+const LBL={ok:'goed',let:'let op',open:'open',fout:'oplossen'};
+function layerSwitch(){return'<div class="seg" role="group" aria-label="Uitleg voor">'+[['jij','Voor jou'],['fb','Voor functioneel beheer'],['it','Voor IT en auditor']].map(([k,l])=>'<button class="chip" type="button" data-layer="'+k+'" aria-pressed="'+(pocLayer===k)+'">'+l+'</button>').join('')+'</div>'}
+function specHtml(){
+  if(pocLayer==='jij')return'<p>AccessGuard heeft vier bestanden nodig. Meestal zet functioneel beheer die klaar. Eén maand aan gegevens is genoeg voor de proefperiode.</p>'+
+    '<div class="rolegrid">'+SPEC.bestanden.map(f=>'<div class="rolecard"><b>'+esc(f.titel)+'</b><span class="small">'+esc(f.b1)+'</span><span class="muted small">Uit: '+esc(f.bron)+(f.nodig==='aanbevolen'?' · aanbevolen':'')+'</span></div>').join('')+'</div>'+
+    '<div class="borg"><b class="small">Veilig aanleveren</b><ul class="limits small"><li>De bestanden blijven op jouw computer. Ze gaan niet naar de leverancier.</li><li>Functioneel beheer mag patiëntnummers vervangen door codes. Dan ziet AccessGuard geen echte nummers.</li><li>Kolommen of codes anders genoemd? Geen probleem. AccessGuard vertaalt ze en laat zien wat er nog mist.</li></ul></div>'+
+    '<h4>Vraag functioneel beheer om de bestanden</h4>'+fbPanel();
+  if(pocLayer==='fb')return'<p class="small">Lever CSV-bestanden aan (UTF-8, kopregel met kolomnamen, puntkomma of komma). Kolomnamen zoals hieronder. Eén maand aan gegevens is genoeg.</p>'+
+    SPEC.bestanden.map(f=>'<details class="howto" open><summary>'+esc(f.naam)+' · '+esc(f.titel)+(f.nodig==='aanbevolen'?' (aanbevolen)':'')+'</summary><p class="small">'+esc(f.b1)+' Uit: '+esc(f.bron)+'.</p><div class="tablebox"><table class="spectable"><thead><tr><th>Kolom</th><th>Nodig</th><th>Wat erin staat</th><th>Voorbeeld</th><th>Als het ontbreekt</th></tr></thead><tbody>'+
+      f.velden.map(v=>'<tr><td class="mono">'+esc(v.k)+'</td><td>'+esc(v.eis)+'</td><td>'+esc(v.fb)+'</td><td class="mono">'+esc(v.vb)+'</td><td class="small muted">'+esc(v.mist)+'</td></tr>').join('')+'</tbody></table></div>'+
+      '<div class="row"><button class="btn" type="button" data-tpl="'+f.id+'">Kopieer kopregel en voorbeeld</button><span class="small" id="tplMsg-'+f.id+'"></span></div></details>').join('')+
+    '<details class="howto"><summary>Waardenlijst voor de kolom "actie"</summary><div class="tablebox"><table><thead><tr><th>Waarde</th><th>Betekenis</th><th>Ook herkend</th></tr></thead><tbody>'+SPEC.acties.map(a=>'<tr><td class="mono">'+a.code+'</td><td>'+esc(a.b1)+'</td><td class="small muted">'+esc(a.syn.slice(0,5).join(', '))+'</td></tr>').join('')+'</tbody></table></div></details>'+
+    '<details class="howto"><summary>Patiëntnummers vervangen door codes</summary><p class="small">Vervang elk patiëntnummer door een code, bijvoorbeeld een SHA-256-hash van het nummer plus een geheime tekst die alleen jullie kennen. Gebruik in inzagelog.csv en zorgcontacten.csv precies dezelfde methode en geheime tekst. Dan blijven de bestanden aan elkaar te koppelen.</p></details>'+
+    exportGuide();
+  return'<p class="small">Eén model onder de motorkap, gebaseerd op open standaarden. Drie manieren van aanleveren, met dezelfde controles.</p>'+
+    '<div class="tablebox"><table class="spectable"><thead><tr><th>Bestand</th><th>Veld</th><th>Nodig</th><th>Standaard</th></tr></thead><tbody>'+
+    SPEC.bestanden.flatMap(f=>f.velden.map((v,i)=>'<tr><td>'+(i?'':'<b>'+esc(f.titel)+'</b><br><span class="small muted">'+esc(f.std)+'</span>')+'</td><td class="mono">'+v.k+'</td><td>'+v.eis+'</td><td class="mono small">'+esc(v.it)+'</td></tr>')).join('')+'</tbody></table></div>'+
+    '<h4>Waardenlijst actie (als ConceptMap)</h4><div class="tablebox"><table><thead><tr><th>Code</th><th>AuditEvent</th><th>Synoniemen</th></tr></thead><tbody>'+SPEC.acties.map(a=>'<tr><td class="mono">'+a.code+'</td><td class="mono small">'+esc(a.fhir)+'</td><td class="small muted">'+esc(a.syn.join(', '))+'</td></tr>').join('')+'</tbody></table></div>'+
+    '<h4>Niveaus van aanleveren</h4><ul class="limits small"><li><b>Niveau 1, nu:</b> CSV-bestanden zoals hierboven. Afwijkende bestanden worden vertaald via een vastgelegde koppeling (kolomtoewijzing plus ConceptMap), die de organisatie goedkeurt.</li><li><b>Niveau 2, gepland:</b> FHIR NDJSON volgens FHIR Bulk Data, voor AuditEvent, Encounter en EpisodeOfCare.</li><li><b>Niveau 3, gepland:</b> live koppeling via FHIR (IHE BALP) en SCIM voor medewerkers en groepen.</li></ul>'+
+    '<h4>Uitgangspunten</h4><ul class="limits small"><li>Streng in de kern: wat "moet" en de waardenlijst liggen vast en zijn versiebeheerd (specificatie '+SPEC.versie+').</li><li>Ruim aan de randen: andere kolomnamen, codes en datumnotaties worden vertaald en zichtbaar gemeld.</li><li>Dataminimalisatie: alleen de velden die een controle nodig heeft. Pseudonimiseren bij de bron (bijvoorbeeld HMAC-SHA-256) wordt ondersteund.</li><li>Buiten scope: bewaren van de logging (5 jaar) en Wabvpz-verzoeken. Die blijven bij het bronsysteem.</li><li>Voor de controle "rechten passen bij functie" is een norm nodig (welke groep hoort bij welke functie). Zonder norm wordt die controle overgeslagen.</li></ul>';
+}
+function exportGuide(){
+  const sys=(org.systemen||[]).filter(x=>!/anders/.test(x));
+  return'<details class="howto"><summary>Exporteren uit jullie systemen</summary>'+(sys.length?sys.map(x=>'<p class="small"><b>'+esc(x)+'.</b> Er is nog geen stap-voor-stap uitleg voor '+esc(x)+' in de bibliotheek. Vraag de leverancier of het applicatiebeheer om een export van de inzagelogging (NEN 7513) met de kolommen hierboven. Lukt dat niet in dit formaat, lever dan aan wat er is. AccessGuard vertaalt het. Zodra een organisatie met '+esc(x)+' een koppeling heeft goedgekeurd, komt de uitleg hier te staan.</p>').join(''):'<p class="small">Geef bij Inrichting aan welke systemen jullie gebruiken. Dan zie je hier de uitleg per systeem zodra die beschikbaar is.</p>')+'</details>';
+}
+function fbPanel(){
+  const fb=org.poc.fb,m=fbMail();
+  return'<div class="row"><div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px"><label class="small" for="fbNaam">Naam functioneel beheerder</label><input class="inp" id="fbNaam" data-fb="naam" value="'+esc(fb.naam)+'"></div><div style="display:flex;flex-direction:column;gap:4px;flex:1.4;min-width:200px"><label class="small" for="fbMail">E-mail</label><input class="inp" id="fbMail" type="email" data-fb="email" value="'+esc(fb.email)+'"></div></div>'+
+    '<details class="howto"><summary>Bekijk de mail</summary><p class="small"><b>Onderwerp:</b> '+esc(m.onderwerp)+'</p><pre class="seen">'+esc(m.tekst)+'</pre></details>'+
+    '<div class="row"><button class="btn primary" type="button" data-pact="fbsend">'+(fb.status==='verstuurd'?'Mail opnieuw versturen':'Mail versturen')+'</button><button class="btn" type="button" data-pact="fbcopy">Kopieer mail</button><span class="small" id="fbMsg" role="status">'+(fb.status==='verstuurd'?'Verstuurd naar '+esc(fb.naam)+' op '+fmtD(fb.sentAt)+' (demo).':'')+'</span></div>';
+}
+function validateHtml(){
+  let h='<div class="row"><label class="btn" for="pocFiles" style="cursor:pointer">Kies de bestanden</label><input type="file" id="pocFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"><button class="btn" type="button" data-pact="oefen">Gebruik oefenbestanden</button><span class="busy">'+esc(pocMsg)+'</span></div>'+
+    '<p class="small muted">De controle gebeurt op deze computer. De oefenbestanden volgen de specificatie en zijn verzonnen, met patiëntnummers als code.</p>';
+  if(!pocVal)return h;
+  const F=valFindings(pocVal),n={fout:0,let:0,ok:0};F.forEach(f=>n[f.lvl]++);
+  const found=SPEC.bestanden.filter(f=>pocVal.bestanden[f.id]&&pocVal.bestanden[f.id].gevonden);
+  h+='<div class="srcov">'+SPEC.bestanden.map(f=>{const b=pocVal.bestanden[f.id];return'<div><b>'+esc(f.titel)+'</b> · '+(b&&b.gevonden?esc(b.tabel)+', '+nf(b.regels)+' regels':'<span class="'+(f.nodig==='verplicht'?'err':'muted')+'">niet gevonden</span>')+'</div>'}).join('')+'</div>'+
+    '<p class="small"><b>'+(n.fout?n.fout+' punt(en) om op te lossen':'Geen fouten')+'</b>'+(n.let?', '+n.let+' om op te letten':'')+'.</p>'+
+    '<ul class="checks">'+F.sort((a,b)=>({fout:0,let:1,ok:2}[a.lvl]-{fout:0,let:1,ok:2}[b.lvl])).map(f=>'<li><span class="res '+(f.lvl==='ok'?'ok':f.lvl==='let'?'wait':'bad')+'">'+LBL[f.lvl]+'</span><span><b>'+esc(f.bestand)+'</b><span class="why">'+esc(pocLayer==='jij'?f.b1:pocLayer==='fb'?f.fb:f.it)+'</span></span></li>').join('')+'</ul>';
+  if(!pocVal.recept){h+='<p class="small">Deze bestanden volgen de standaard nog niet. Wijken alleen de kolomnamen af? Dan kan de assistent ze vertalen.</p><button class="btn" type="button" data-goto="assistent">Naar Bron koppelen</button>';return h}
+  if(pocDry){
+    const r=pocDry;
+    h+='<h4>Test met deze bestanden</h4><ul class="checks">'+r.poorten.map(g=>'<li><span class="res '+(g.ok?'ok':'bad')+'">'+(g.ok?'goed':'niet goed')+'</span><span><b>'+esc(g.naam)+'</b><span class="why">'+esc(g.waarde)+' · moet zijn: '+esc(g.norm)+'</span></span></li>').join('')+'</ul>';
+    const low=(r.relaties.per_afdeling||[]).filter(a=>!a.breed&&a.inzages>=50&&a.met_bewijs_pct<50);
+    low.forEach(a=>{h+='<div class="borg"><span class="small">Bij <b>'+esc(a.afdeling)+'</b> heeft maar '+pct(a.met_bewijs_pct)+' van de inzages een zorgcontact. Mag deze afdeling alle patiënten zien, zoals vaak bij een spoedeisende hulp?</span><div class="row"><button class="btn" type="button" data-breedadd="'+esc(a.afdeling)+'">Ja, mag alles zien</button><span class="small muted">Nee? Dan blijven het signalen.</span></div></div>'});
+    h+=activeSource.type==='recept'&&activeSource.recept===pocRecept?'<p class="ok-text">Deze bestanden zijn in gebruik. <button class="linkbtn" data-goto="signalen">Bekijk de signalen</button></p>':'<div class="row"><button class="btn primary" type="button" data-pact="use">Gebruik deze bestanden</button><span class="small muted">Je kunt dit later altijd vervangen.</span></div>';
+  }
+  return h;
+}
+function compareHtml(){
+  const V=org.poc.vergelijk;
+  return'<p class="small">Draai jullie huidige controle (Qlik, iCON of de steekproef) over dezelfde maand. Vul daarna in wat je vond.</p>'+
+    '<div class="params"><label for="cmpH">Gevallen gevonden met de huidige werkwijze<input type="number" min="0" id="cmpH" data-cmp="huidig" value="'+esc(V.huidig||'')+'"></label>'+
+    '<label for="cmpG">Daarvan ook gevonden door AccessGuard<input type="number" min="0" id="cmpG" data-cmp="gevonden" value="'+esc(V.gevonden||'')+'"></label>'+
+    '<label for="cmpX">Extra gevonden door AccessGuard, na beoordeling terecht<input type="number" min="0" id="cmpX" data-cmp="extra" value="'+esc(V.extra||'')+'"></label>'+
+    '<label for="cmpU1">Uren voor de huidige controle per maand<input type="number" min="0" step="0.5" id="cmpU1" data-cmp="urenOud" value="'+esc(V.urenOud||'')+'"></label>'+
+    '<label for="cmpU2">Uren met AccessGuard per maand<input type="number" min="0" step="0.5" id="cmpU2" data-cmp="urenNieuw" value="'+esc(V.urenNieuw||'')+'"></label></div>'+
+    (V.urenOud&&V.urenNieuw?'<p class="small">Tijd: '+String(V.urenOud).replace('.',',')+' uur nu, '+String(V.urenNieuw).replace('.',',')+' uur met AccessGuard.</p>':'');
+}
+function offlineHtml(){
+  const on=navigator.onLine;
+  return'<ol class="steps small"><li>Zet de internetverbinding uit. Of in de browser: open de ontwikkelaarstools (F12), ga naar Netwerk en kies Offline.</li><li>Klik hieronder op "Controles opnieuw uitvoeren".</li><li>Werkt het? Dan heeft AccessGuard het internet niet nodig om je gegevens te verwerken. Er gaat dus niets naar buiten.</li></ol>'+
+    '<p class="small">Verbinding nu: <b>'+(on?'online':'offline')+'</b>. Verbindingen sinds het laden van de gegevens: <b>'+(dataReadyAt==null?'—':netLog.filter(x=>external(x.u)&&x.t>dataReadyAt).length)+'</b>.</p>'+
+    '<div class="row"><button class="btn" type="button" data-pact="offrun">Controles opnieuw uitvoeren</button><label class="row small" style="gap:6px" for="offOk"><input type="checkbox" id="offOk" data-pchk="offline"'+(org.poc.offline?' checked':'')+'>Ik heb de offline-test gedaan</label>'+(org.poc.offlineAuto?'<span class="ok-text">Gemeten: werkte zonder internet.</span>':'')+'</div>';
+}
+function trustHtml(){
+  const a4=trustA4();
+  return'<div class="grid"><div><h4>Voor bestuur en FG (1 A4)</h4><pre class="seen" style="max-height:260px">'+esc(a4)+'</pre><div class="row"><button class="btn" type="button" data-pact="a4copy">Kopieer</button><span class="small" id="a4Msg"></span></div></div>'+
+    '<div><h4>Voor de CISO</h4><ul class="checks">'+TRUST_ITEMS.map(([t,s,w])=>'<li><span class="res '+(s==='ok'?'ok':'wait')+'">'+(s==='ok'?'aanwezig':'productie')+'</span><span><b>'+esc(t)+'</b><span class="why">'+esc(w)+'</span></span></li>').join('')+'</ul><button class="linkbtn small" data-goto="veiligheid">Bekijk de zelftests op Veiligheid</button></div></div>'+
+    '<label class="row small" style="gap:6px;margin-top:8px" for="trustOk"><input type="checkbox" id="trustOk" data-pchk="trust"'+(org.poc.trust?' checked':'')+'>De FG of CISO heeft deze informatie gezien en heeft geen bezwaar tegen de proef</label>';
+}
+const TRUST_ITEMS=[
+  ['Schema van de gegevensstromen','ok','Op het tabblad Veiligheid.'],
+  ['Netwerkgedrag','ok','Geen verbindingen na het laden. Zelf te testen met de offline-test.'],
+  ['Versleuteling','ok','AES-256-GCM, sleutel via PBKDF2 (200.000 rondes), codes via HMAC-SHA-256, sleutels niet uitleesbaar.'],
+  ['Gebruikte onderdelen','ok','Eén bestand, geen externe bibliotheken of lettertypen.'],
+  ['Broncode','ok','Openbaar in te zien, zodat een eigen beoordeling mogelijk is.'],
+  ['Aanleverspecificatie met standaarden','ok','Hierboven, bij "Voor IT en auditor".'],
+  ['Logboek van de tool','ok','Elke handeling, op slot bewaard.'],
+  ['Externe pentest','prod','Rapport van een onafhankelijke partij.'],
+  ['Ondertekende versies','prod','Met vingerafdruk per versie om te controleren wat er draait.'],
+  ['Juridische toets verwerkersrol','prod','Onderbouwing waarom de leverancier geen verwerker is.'],
+  ['Ingevulde leveranciersvragenlijst','prod','Op aanvraag.']];
+function trustA4(){return'AccessGuard in het kort, voor bestuur en FG\n\n'+
+  'Wat het doet\nAccessGuard controleert of medewerkers dossiers alleen inzien als daar een reden voor is (NEN 7513). Alle inzages worden gecontroleerd, niet een steekproef.\n\n'+
+  'Waar de gegevens blijven\nAlle verwerking gebeurt op de computer van de gebruiker. Gegevens van patiënten en medewerkers gaan niet naar de leverancier. Dat kunnen jullie zelf testen: de applicatie werkt ook zonder internetverbinding.\n\n'+
+  'Wat er bewaard wordt\nAlleen de oordelen en het logboek. Die gaan op slot met een wachtwoordzin die alleen jullie kennen. Patiëntnummers kunnen al vóór het aanleveren worden vervangen door codes.\n\n'+
+  'Wie beslist\nEen mens beoordeelt elk signaal. AccessGuard geeft geen oordeel over medewerkers (AVG artikel 22).\n\n'+
+  'Wat de leverancier wel heeft\nNamen en e-mailadressen van gebruikers, en de factuurgegevens.\n\n'+
+  'Wat jullie zelf blijven doen\nEen DPIA, het bewaren van de logging (bijvoorbeeld 5 jaar) en het beantwoorden van verzoeken van patiënten (Wabvpz). Dat blijft bij het EPD of ECD.\n\n'+
+  'Wat AccessGuard niet kan voorkomen\nEen besmette werkplek, of iemand die een schermafbeelding maakt. Gebruik een beheerde werkplek. Het logboek maakt misbruik zichtbaar.';}
+function renderPoc(){
+  if(!org)return;normalizeOrg(org);
+  const trial=org.plan==='proef',C=pocCriteria(),okN=C.filter(c=>c.s==='ok').length;
+  let h='';
+  if(trial)h+='<div class="card"><div class="head"><h3>Proefperiode</h3><span class="tag">dag '+trialDay(org)+' van '+POC_DAYS+' · tot '+fmtD(trialEnd(org))+'</span></div>'+
+    '<div class="bar" style="height:6px"><i style="width:'+Math.round(100*okN/C.length)+'%;background:var(--ok)"></i></div>'+
+    '<ul class="checks">'+C.map(c=>'<li><span class="res '+(c.s==='ok'?'ok':c.s==='let'?'wait':'wait')+'">'+LBL[c.s]+'</span><span><b>'+esc(c.t)+'</b><span class="why">'+esc(c.w)+'</span></span></li>').join('')+'</ul>'+
+    '<div class="row"><button class="btn primary" type="button" data-goto="abonnement">Abonnement afsluiten</button><span class="small muted">'+(okN===C.length?'Alles is groen.':okN+' van '+C.length+' klaar. Je kunt ook afsluiten als nog niet alles groen is.')+' Alles wat je nu instelt blijft staan.</span></div></div>';
+  h+='<div class="card"><div class="head"><h3>Stap 1. Bestanden aanleveren</h3>'+layerSwitch()+'</div>'+specHtml()+'</div>'+
+    '<div class="card"><div class="head"><h3>Stap 2. Bestanden controleren</h3><span class="tag">uitleg: '+({jij:'voor jou',fb:'voor functioneel beheer',it:'voor IT en auditor'}[pocLayer])+'</span></div>'+validateHtml()+'</div>';
+  if(trial)h+='<div class="card"><h3>Stap 3. Vergelijken met jullie huidige werkwijze</h3>'+compareHtml()+'</div>';
+  h+='<div class="card"><h3>'+(trial?'Stap 4. ':'')+'Zelf de veiligheid nagaan</h3><h4>Offline-test</h4>'+offlineHtml()+'<h4>Veiligheidsinformatie</h4>'+trustHtml()+'</div>';
+  $('#pocBox').innerHTML=h;
+}
+async function pocLoad(files){
+  pocBusy=true;pocMsg='Bestanden controleren…';pocDry=null;pocRecept=null;renderPoc();
+  try{
+    if(files)await call('scn_files',{files});else await call('scn_load',{id:'D'});
+    pocVal=await call('validate',{spec:SPEC});
+    const F=valFindings(pocVal),fouten=F.filter(f=>f.lvl==='fout').length;
+    if(pocVal.recept){pocRecept=pocVal.recept;pocDry=await call('dry',{recept:pocRecept})}
+    org.poc.kwaliteit={fouten,poorten:pocDry?pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm})):null,at:Date.now()};saveOrgs();
+    log('Aanlevering gecontroleerd',(files?files.length+' eigen bestanden':'oefenbestanden')+' · '+fouten+' fout(en)');
+    pocMsg='';
+  }catch(e){pocMsg='Controleren lukte niet: '+e.message}
+  pocBusy=false;renderPoc();
+}
+async function pocRedry(){pocDry=await call('dry',{recept:pocRecept});org.poc.kwaliteit.poorten=pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm}));saveOrgs();renderPoc()}
+
 /* ---------- Navigatie en events ---------- */
-const VIEWS=['signalen','assistent','rapport','inrichting','bronnen','controles','team','abonnement','sleutel','veiligheid'];
+const VIEWS=['poc','signalen','assistent','rapport','inrichting','bronnen','controles','team','abonnement','sleutel','veiligheid'];
 function show(){let v=VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'signalen';
-  if(v==='team')renderTeam();if(v==='abonnement')renderBilling();if(v==='inrichting')renderSetup();
+  if(v==='team')renderTeam();if(v==='abonnement')renderBilling();if(v==='inrichting')renderSetup();if(v==='poc')renderPoc();
   currentView=v;VIEWS.forEach(x=>$('#v-'+x).hidden=x!==v);if(v==='veiligheid'){runSelfChecks();renderLog()}
   document.querySelectorAll('nav.steps button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v?'page':'false'))}
 window.addEventListener('hashchange',show);
 document.querySelector('nav.steps').addEventListener('click',e=>{const b=e.target.closest('button');if(b)location.hash=b.dataset.view});
+/* ---------- Proefperiode-events ---------- */
+$('#pocBox').addEventListener('click',async e=>{
+  const l=e.target.closest('[data-layer]');if(l){pocLayer=l.dataset.layer;renderPoc();return}
+  const t=e.target.closest('[data-tpl]');if(t){const f=SPEC.bestanden.find(x=>x.id===t.dataset.tpl);pocCopy(templateCsv(f),'tplMsg-'+f.id);return}
+  const b=e.target.closest('[data-breedadd]');if(b&&pocRecept){pocRecept.breed_afdelingen=[...new Set(pocRecept.breed_afdelingen.concat(b.dataset.breedadd))];log('Afdeling mag alles zien',b.dataset.breedadd);await pocRedry();return}
+  const a=e.target.closest('[data-pact]');if(!a)return;const act=a.dataset.pact;
+  if(act==='oefen')await pocLoad(null);
+  else if(act==='use'){await approveRecipe(pocRecept,session.name);location.hash='poc';show()}
+  else if(act==='fbcopy'){const m=fbMail();pocCopy('Onderwerp: '+m.onderwerp+'\n\n'+m.tekst,'fbMsg')}
+  else if(act==='fbsend'){const fb=org.poc.fb,msg=$('#fbMsg');
+    if((fb.naam||'').length<2){msg.className='err';msg.textContent='Vul de naam van de functioneel beheerder in.';return}
+    if(!validEmail(fb.email||'')){msg.className='err';msg.textContent='Vul een geldig e-mailadres in.';return}
+    fb.status='verstuurd';fb.sentAt=Date.now();saveOrgs();log('Mail aan functioneel beheer verstuurd',fb.naam);renderPoc()}
+  else if(act==='offrun'){await runChecks();if(!navigator.onLine){org.poc.offlineAuto=true;saveOrgs();log('Offline-test','Controles uitgevoerd zonder internetverbinding')}renderPoc()}
+  else if(act==='a4copy')pocCopy(trustA4(),'a4Msg');
+});
+$('#pocBox').addEventListener('change',async e=>{
+  const t=e.target;
+  if(t.id==='pocFiles'){const fl=[...t.files];if(!fl.length)return;const texts=await Promise.all(fl.map(f=>f.text().then(text=>({name:f.name,text}))));await pocLoad(texts);return}
+  if(t.dataset.pchk){org.poc[t.dataset.pchk]=t.checked;if(t.dataset.pchk==='offline'&&t.checked)org.poc.offlineBy=session.name;saveOrgs();log(t.dataset.pchk==='trust'?'Veiligheidsinformatie besproken':'Offline-test bevestigd',t.checked?'ja':'nee');renderPoc();return}
+  if(t.dataset.cmp){org.poc.vergelijk[t.dataset.cmp]=t.value===''?'':Number(t.value);saveOrgs();log('Vergelijking bijgewerkt',t.dataset.cmp+': '+t.value);renderPoc();return}
+});
+$('#pocBox').addEventListener('input',e=>{const t=e.target;if(t.dataset.fb&&org){org.poc.fb[t.dataset.fb]=t.value.trim()}});
+window.addEventListener('online',()=>{if(currentView==='poc')renderPoc()});
+window.addEventListener('offline',()=>{if(currentView==='poc')renderPoc()});
+
 
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;if(b.dataset.clearEmp){empFilter=null;renderChips();renderTable();return}filter=b.dataset.f;renderChips();renderTable()});
 $('#modeSig').addEventListener('click',()=>{viewMode='signaal';empFilter=null;renderChips();renderTable()});
@@ -2093,6 +2417,7 @@ async function platformAct(a){
     if(A!==B){gate.err='De twee wachtwoordzinnen zijn niet gelijk.';return renderGate()}
     await setKey(A);pendingKey=A;org.keySet=true;saveOrgs();renderGate()}
   else if(act==='paydemo'){demoPay();platformRerender()}
+  else if(act==='plan'){org.plan=a.dataset.plan;saveOrgs();platformRerender()}
   else if(act==='mdel'){const m=org.members[+a.dataset.i];if(m&&m.email!==session.email){m.status='verwijderd';saveOrgs();log('Collega verwijderd',m.name);platformRerender()}}
   else if(act==='logout')await logout();
   else if(act==='savebill'){const v=$('#bMail2').value.trim();if(validEmail(v)){org.billing.factuurEmail=v;saveOrgs();log('Factuuradres gewijzigd',v);renderBilling()}}
