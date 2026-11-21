@@ -169,6 +169,7 @@ footer{font-size:12.5px;color:var(--muted);max-width:80ch}
 #gateBody{width:100%;display:flex;justify-content:center}
 .gcard{width:100%;max-width:460px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:10px}
 .glogo{font:600 20px var(--f-display);color:var(--accent);letter-spacing:.01em}
+.sitelink{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:4px}.sitelink:hover{color:var(--accent);text-decoration:underline}
 .sso{display:flex;flex-direction:column;gap:8px}
 .ssobtn{text-align:left;padding:11px 14px}
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -234,6 +235,7 @@ fieldset.prep legend{padding:0 4px}
 <div class="wrap">
   <header class="top">
     <div class="brand">
+      <a class="sitelink" data-site href="https://koppe00.github.io/Accessguard/">← Naar de website van Klinq</a>
       <h1>AccessGuard</h1>
       <small>Controle op wie welk dossier heeft bekeken, volgens NEN 7513</small>
     </div>
@@ -1777,6 +1779,8 @@ async function approveRecipe(rc,door){
 
 /* ================= Platform: inloggen, onboarding, team, abonnement ================= */
 // Prijs per organisatie. Later per organisatie of staffel in te stellen.
+const SITE=/\/app\/?(index\.html)?$/.test(location.pathname)?location.pathname.replace(/app\/?(index\.html)?$/,''):'https://koppe00.github.io/Accessguard/';
+document.querySelectorAll('[data-site]').forEach(a=>a.href=SITE);
 const PRICING={perOrg:99,vat:0.21,currency:'EUR',label:'per organisatie per maand'};
 const PROVIDERS=[{id:'entra',label:'Microsoft Entra ID'},{id:'google',label:'Google Workspace'},{id:'okta',label:'Okta'},{id:'oidc',label:'Andere inlogdienst (SAML of OpenID Connect)'}];
 const IT_STEPS={
@@ -1833,7 +1837,7 @@ function renderGate(){
       '<button class="btn" type="button" data-act="mail">Inloggen met e-mail en een code</button>'+
       '<button class="btn primary" type="button" data-act="demo">Bekijk het demo-account</button>'+err+
       '<p class="small muted">Nieuw? Log in met je werkadres. Is je organisatie nog niet aangemeld, dan start de inrichting. Dat duurt ongeveer tien minuten.</p>'+
-      '<p class="small muted">Dit is een prototype. Inloggen via je organisatie wordt hier nagebootst. AccessGuard vraagt nooit om een wachtwoord.</p></div>';
+      '<p class="small muted">Dit is een prototype. Inloggen via je organisatie wordt hier nagebootst. AccessGuard vraagt nooit om een wachtwoord.</p><p class="small"><a class="sitelink" data-site href="'+SITE+'">← Terug naar de website</a></p></div>';
   }else if(gate.view==='sso'){
     const p=PROVIDERS.find(x=>x.id===gate.p);
     h='<form novalidate class="gcard" data-form="sso"><div class="glogo">AccessGuard</div><h2>Inloggen met '+esc(p.label)+'</h2><span class="demotag">nagebootst</span>'+
@@ -1962,7 +1966,7 @@ function renderOnboarding(){
     '<span class="err" id="obErr" role="status">'+esc(gate.err||'')+'</span></div>';
   return'<div class="obwrap"><aside class="obside"><div class="glogo">AccessGuard</div><p class="small muted">Inrichting voor '+esc(org.name||org.domain)+'</p><ol class="obsteps">'+
     OB_STEPS.map((x,i)=>'<li class="'+(i<ob.step?'done':i===ob.step?'cur':'')+'"><span class="n">'+(i+1)+'</span><span><b>'+esc(x.titel)+'</b>'+(x.wie?'<span class="muted small">'+esc(x.wie)+'</span>':'')+'</span></li>').join('')+
-    '</ol><button class="linkbtn small" type="button" data-act="logout">Uitloggen</button></aside><section class="obmain"><div class="head"><h2>'+esc(s.titel)+'</h2>'+(s.wie?'<span class="whochip">'+esc(s.wie)+'</span>':'')+'</div><p class="small muted">Stap '+(ob.step+1)+' van '+OB_STEPS.length+'</p>'+body+nav+'</section></div>';
+    '</ol><button class="linkbtn small" type="button" data-act="logout">Uitloggen</button><a class="sitelink" data-site href="'+SITE+'">← Naar de website</a></aside><section class="obmain"><div class="head"><h2>'+esc(s.titel)+'</h2>'+(s.wie?'<span class="whochip">'+esc(s.wie)+'</span>':'')+'</div><p class="small muted">Stap '+(ob.step+1)+' van '+OB_STEPS.length+'</p>'+body+nav+'</section></div>';
 }
 async function obNext(){
   const s=OB_STEPS[ob.step];gate.err='';
