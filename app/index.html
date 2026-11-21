@@ -169,6 +169,16 @@ footer{font-size:12.5px;color:var(--muted);max-width:80ch}
 #gateBody{width:100%;display:flex;justify-content:center}
 .gcard{width:100%;max-width:460px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:10px}
 .glogo{font:600 20px var(--f-display);color:var(--accent);letter-spacing:.01em}
+.trail{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.trailflow{display:grid;grid-template-columns:minmax(0,1.2fr) auto minmax(0,1.2fr) auto minmax(0,1fr);gap:8px;align-items:stretch}
+.tnode{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tnode ul{margin:0;padding-left:1.1em;overflow-wrap:anywhere}
+.tnode.here{border-color:var(--ok);box-shadow:inset 0 0 0 1px var(--ok)}
+.tnode.out{border-style:dashed}
+.tk{font:600 12px var(--f-mono);color:var(--muted)}
+.tarrow{align-self:center;color:var(--ok);font-weight:700}.tarrow.stop{color:var(--hoog)}
+.trailNet{font:700 28px/1 var(--f-mono)}.trailNet.ok{color:var(--ok)}.trailNet.bad{color:var(--hoog)}
+@media (max-width:760px){.trailflow{grid-template-columns:1fr}.tarrow{transform:rotate(90deg);justify-self:center}}
 .sitelink{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:4px}.sitelink:hover{color:var(--accent);text-decoration:underline}
 .sso{display:flex;flex-direction:column;gap:8px}
 .ssobtn{text-align:left;padding:11px 14px}
@@ -314,7 +324,7 @@ fieldset.prep legend{padding:0 4px}
         <button class="scnbtn" data-scn="C" type="button"><b>Zorgdossier ouderenzorg (ECD)</b><span>Export per locatie. Bevat tijden in een computerformaat, regels zonder cliënt en verblijf zonder einddatum.</span></button>
       </div>
       <p class="small muted">Deze oefenbestanden zijn verzonnen. Ze lijken niet op de bestanden van een echte leverancier.</p>
-      <label class="small" for="ownFiles">Of kies je eigen exportbestanden (je kunt meerdere CSV-bestanden tegelijk kiezen)</label>
+      <label class="small" for="ownFiles">Of open je eigen exportbestanden van deze computer (meerdere tegelijk kan). Ze worden in deze browser gelezen, niet geüpload.</label>
       <input type="file" id="ownFiles" multiple accept=".csv,.txt,text/csv">
       <div id="srcOverview"></div>
     </div>
@@ -327,6 +337,7 @@ fieldset.prep legend{padding:0 4px}
         <button class="btn" id="btnStop" type="button" hidden>Stop</button>
         <span class="busy" id="agentState">Kies eerst een bron.</span>
       </div>
+      <div id="aiPreview"></div>
       <ol class="feed" id="feed"></ol>
       <form novalidate class="askbox" id="askBox" hidden></form>
       <div class="agenttext" id="agentText" hidden></div>
@@ -959,7 +970,10 @@ function survey(){
       const top=Object.entries(shapes).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([s,n])=>s+' ('+Math.round(100*n/vals.length)+'%)');
       const maxLen=vals.reduce((m,v)=>Math.max(m,v.length),0);
       const c={kolom:h,soort:prof[ix].kind,gevuld_pct:t.rows.length?Math.round(1000*filled/t.rows.length)/10:0,uniek:dist.size,vorm:top};
-      if(dist.size<=25&&maxLen<=30&&prof[ix].kind!=='datum'&&prof[ix].kind!=='datumtijd'){const cnt={};for(const r of t.rows){const v=(r[ix]||'').trim();if(v)cnt[v]=(cnt[v]||0)+1}c.waarden=Object.fromEntries(Object.entries(cnt).sort((a,b)=>b[1]-a[1]))}
+      const PERSON=/(tussenvoegsel|datum|date|tijd|time|gebruiker|user|login|account|medewerker|employee|naam|name|patient|patiënt|client|cliënt|bsn|mrn|pat_?id|persoon|person|achternaam|voorletter|geboorte|adres|postcode|telefoon|email|e-mail)/i;
+      const NONPERS=/(afdeling|department|dept|locatie|location|unit|team|groep|group|rol|role|functie|title|actie|action|type|soort|categorie|specialisme|service|metric|event|gebeurtenis|module|status|reason_type)/i;
+      if((PERSON.test(h)&&!NONPERS.test(h))||prof[ix].kind==='code'||prof[ix].kind==='postcode'){if(dist.size<=25)c.waarden_verborgen='mogelijk persoonsgegeven of nummer'}
+      else if(dist.size<=25&&maxLen<=30&&prof[ix].kind!=='datum'&&prof[ix].kind!=='datumtijd'){const cnt={};for(const r of t.rows){const v=(r[ix]||'').trim();if(v)cnt[v]=(cnt[v]||0)+1}c.waarden=Object.fromEntries(Object.entries(cnt).sort((a,b)=>b[1]-a[1]))}
       else if(dist.size<=25)c.waarden_verborgen='vrije tekst of mogelijk persoonsgegeven';
       if(dist.size>30&&prof[ix].kind==='code')idCols.push({t:name,c:h,set:new Set(t.rows.map(r=>(r[ix]||'').trim()).filter(Boolean))});
       return c;
@@ -1527,11 +1541,11 @@ function detailHtml(s){
   return'<div class="dgrid">'+parts.join('')+'</div>';
 }
 function renderSources(){
-  $('#sources').innerHTML=Object.entries(SCHEMA).map(([k,sc])=>{
+  $('#sources').innerHTML=(TRAIL.kind==='bestanden'?trailHtml('bestanden'):'')+Object.entries(SCHEMA).map(([k,sc])=>{
     const mt=meta[k]||{},f=files[k];
     let h='<div class="card"><div class="head"><h3>'+esc(sc.label)+'</h3><span class="tag">'+esc(sc.bron)+'</span></div>'+
       '<p class="small">'+(mt.src==='file'?'Eigen bestand: <span class="mono">'+esc(mt.name)+'</span> · '+nf(mt.rows)+' regels':mt.src==='demo'?'Demodata · '+nf(mt.rows)+' regels':'<span class="muted">Niet geladen</span>')+'</p>'+
-      '<label class="muted small" for="f-'+k+'">CSV-export kiezen</label><input type="file" id="f-'+k+'" accept=".csv,.txt,text/csv" data-src="'+k+'">';
+      '<label class="muted small" for="f-'+k+'">CSV-export openen (blijft op deze computer)</label><input type="file" id="f-'+k+'" accept=".csv,.txt,text/csv" data-src="'+k+'">';
     if(f){
       h+='<p class="small">'+nf(f.rows)+' regels gelezen uit <span class="mono">'+esc(f.name)+'</span></p><div class="mapping">'+sc.fields.map(([fl,req])=>{
         const sel=f.map[fl],hint=sel!=null?(f.how[fl]==='inhoud'?'herkend op inhoud':f.how[fl]==='naam'?'herkend op naam':'handmatig'):'';
@@ -1655,15 +1669,27 @@ WERKWIJZE (je hebt maar een paar rondes):
 function feedItem(kind,title,sub){const li=document.createElement('li');li.innerHTML='<span class="dot '+(kind||'')+'"></span><span>'+esc(title)+(sub?'<span class="sub">'+esc(sub)+'</span>':'')+'</span>';$('#feed').append(li);return li}
 function seenAdd(label,text){asst.seen.push('### '+label+'\n'+text);$('#seen').textContent=asst.seen.join('\n\n')}
 function resetAgentUi(){asst.disclosed=new Set();$('#feed').innerHTML='';$('#agentText').hidden=true;$('#agentText').textContent='';$('#askBox').hidden=true;asst.seen=[];$('#seen').textContent='Nog niets verstuurd.';asst.final=null;asst.last=null;asst.leak=null;$('#paspoort').innerHTML='<p class="muted small">Verschijnt na de eerste test.</p>';$('#ppTag').textContent=''}
+function aiPreviewHtml(sv){
+  if(!sv||!sv.tabellen)return'';
+  let hid=0,tot=0,wv=0;const rows=sv.tabellen.map(t=>'<details class="howto"><summary><span class="mono">'+esc(t.tabel)+'</span> · '+nf(t.regels)+' regels · '+t.kolommen.length+' kolommen</summary><div class="tablebox"><table class="spectable"><thead><tr><th>Kolom</th><th>Soort</th><th>Gevuld</th><th>Verschillend</th><th>Vorm</th><th>Waarden</th></tr></thead><tbody>'+
+    t.kolommen.map(c=>{tot++;if(c.waarden)wv++;else hid++;const v=(c.vorm||[])[0]||'';return'<tr><td class="mono">'+esc(c.kolom)+'</td><td>'+esc(c.soort)+'</td><td>'+pct(c.gevuld_pct)+'</td><td>'+nf(c.uniek)+'</td><td class="small" style="font-family:var(--f-mono);white-space:normal;max-width:16em;overflow-wrap:anywhere">'+esc(v.length>28?v.slice(0,28)+'…':v)+'</td><td class="small" style="white-space:normal;min-width:14em">'+(c.waarden?esc(Object.keys(c.waarden).slice(0,8).join(', '))+(Object.keys(c.waarden).length>8?' …':''):c.waarden_verborgen?'<span class="muted">afgeschermd</span>':'<span class="muted">niet meegestuurd</span>')+'</td></tr>'}).join('')+'</tbody></table></div></details>').join('');
+  return'<div class="trail"><b class="small">Wat de AI te zien krijgt, en wat niet</b><div class="trailflow">'+
+    '<div class="tnode"><span class="tk">1 · Je bestanden</span><span class="small">Blijven op deze computer, in dit tabblad. De inhoud gaat nergens heen.</span></div><div class="tarrow" aria-hidden="true">→</div>'+
+    '<div class="tnode here"><span class="tk">2 · Beschrijving, hier gemaakt</span><span class="small">AccessGuard beschrijft de opbouw: kolomnamen, soort, hoe vol, hoeveel verschillende waarden en de vorm (zoals 9999-99-99 voor een datum). Alleen bij keuzelijsten, zoals soorten handelingen of afdelingen, gaan de waarden mee.</span></div><div class="tarrow" aria-hidden="true">→</div>'+
+    '<div class="tnode out"><span class="tk">3 · Naar de AI</span><span class="small">Alleen die beschrijving en de uitkomst van tests (percentages en aantallen). Geen regels, geen patiënt- of cliëntnummers, geen namen of inlognamen, geen datums of vrije tekst.</span></div></div>'+
+    '<p class="small">Van <b>'+hid+'</b> van de '+tot+' kolommen gaat geen enkele waarde mee, alleen de beschrijving. Bij <b>'+wv+'</b> keuzelijsten gaan de mogelijke waarden mee, zoals soorten handelingen en afdelingsnamen. Kolommen met namen, inlognamen, nummers of datums worden altijd afgeschermd. Na afloop vergelijkt AccessGuard alles wat verstuurd is met de nummers in je bestanden. Je ziet de uitkomst hieronder en onder Veiligheid.</p>'+
+    rows+'<p class="small muted">Dit is precies de beschrijving die de assistent krijgt. De volledige tekst zie je onder "Wat kreeg de assistent te zien?".</p></div>';
+}
+async function renderAiPreview(){try{const sv=await call('survey');asst.preview=sv;$('#aiPreview').innerHTML=aiPreviewHtml(sv)}catch(_){$('#aiPreview').innerHTML=''}}
 function renderOverview(ov){
-  $('#srcOverview').innerHTML='<div class="srcov">'+ov.tabellen.map(t=>'<div><b>'+esc(t.tabel)+'</b> · '+nf(t.regels)+' regels<br><span class="muted">'+esc(t.kolommen.join(' · '))+'</span></div>').join('')+'</div>';
+  $('#srcOverview').innerHTML=trailHtml('bron')+'<div class="srcov">'+ov.tabellen.map(t=>'<div><b>'+esc(t.tabel)+'</b> · '+nf(t.regels)+' regels<br><span class="muted">'+esc(t.kolommen.join(' · '))+'</span></div>').join('')+'</div>';
 }
 async function chooseSource(id,label,files){
   if(asst.running)return;
   document.querySelectorAll('.scnbtn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scn===id)));
   $('#agentState').textContent='Bestanden inlezen…';
   try{asst.overview=id?await call('scn_load',{id}):await call('scn_files',{files});asst.label=label;
-    renderOverview(asst.overview);resetAgentUi();
+    renderOverview(asst.overview);resetAgentUi();await renderAiPreview();
     $('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#agentState').textContent='Klaar om te starten.';$('#agentTag').textContent=label;
     log('Bron gekozen om te koppelen',label);
   }catch(e){$('#agentState').textContent='Inlezen lukte niet: '+e.message}
@@ -2090,6 +2116,26 @@ const SPEC={versie:'1.1',bestanden:[
     {code:'noodtoegang',fhir:'R + purposeOfEvent ETREAT',b1:'Een dossier openen met noodtoegang',syn:['btg','break-the-glass access','break the glass','break-the-glass','nood']},
     {code:'automatisch',fhir:'niet als inzage geteld',b1:'Iets dat het systeem zelf deed, zonder mens',syn:['background prefetch','sessie.vernieuwd','prefetch','systeem','auto']}]};
 
+/* ================= Wat er met je bestanden gebeurt ================= */
+const TRAIL={files:[],kind:null,t0:null,at:null};
+function trailOpen(fl,kind){TRAIL.files=(fl||[]).map(f=>({name:f.name,size:f.size,mod:f.lastModified}));TRAIL.kind=kind;TRAIL.t0=performance.now();TRAIL.at=Date.now();log('Bestanden geopend op deze computer',TRAIL.files.length?TRAIL.files.length+' bestand(en), niet verstuurd':'oefenbestanden')}
+const fmtSize=b=>b<1024?b+' B':b<1048576?(b/1024).toFixed(0)+' kB':(b/1048576).toFixed(1).replace('.',',')+' MB';
+function trailNet(){const ext=TRAIL.t0==null?[]:netLog.filter(x=>external(x.u)&&x.t>TRAIL.t0);return ext}
+function trailStore(){let n=0;try{n+=localStorage.length}catch(_){}try{n+=sessionStorage.length}catch(_){}return n}
+function trailHtml(where){
+  if(TRAIL.t0==null)return'';
+  const ext=trailNet(),st=trailStore(),hosts=[...new Set(ext.map(x=>{try{return new URL(x.u).host}catch(_){return x.u}}))];
+  const fl=TRAIL.files.length?TRAIL.files.map(f=>'<li><span class="mono">'+esc(f.name)+'</span> · '+fmtSize(f.size)+(f.mod?' · gewijzigd '+fmtD(f.mod):'')+'</li>').join(''):'<li>Oefenbestanden. Die zijn in dit tabblad aangemaakt, niet gedownload.</li>';
+  return'<div class="trail" data-trail="'+where+'"><b class="small">Wat er met je bestanden gebeurt</b><div class="trailflow">'+
+    '<div class="tnode"><span class="tk">1 · Op je computer</span><ul class="small">'+fl+'</ul><span class="small muted">De browser leest de bestanden via de bestandskiezer. Er wordt geen kopie gemaakt en niets geüpload.</span></div>'+
+    '<div class="tarrow" aria-hidden="true">→</div>'+
+    '<div class="tnode here"><span class="tk">2 · In dit browsertabblad</span><span class="small">De inhoud staat alleen in het werkgeheugen van dit tabblad. De controles draaien in een rekenkern (Web Worker) in hetzelfde tabblad.</span><span class="small">Op schijf of in browseropslag: <b class="trailStore">'+(st?st+' item(s) gevonden':'niets')+'</b>.</span><span class="small muted">Sluit je het tabblad, dan is de inhoud weg.</span></div>'+
+    '<div class="tarrow stop" aria-hidden="true">✕</div>'+
+    '<div class="tnode out"><span class="tk">3 · Internet</span><span class="small">Verbindingen naar buiten sinds je de bestanden opende:</span><b class="trailNet '+(ext.length?'bad':'ok')+'">'+ext.length+'</b><span class="small muted trailHosts">'+(ext.length?'Naar: '+esc(hosts.join(', ')):'Gemeten met de browser zelf (Resource Timing), live bijgewerkt.')+'</span></div>'+
+    '</div><p class="small muted">Wat wél wordt bewaard: je oordelen en het logboek, versleuteld met jullie wachtwoordzin. Daar zitten geen bestanden in. Controleer het zelf: open de ontwikkelaarstools van je browser (F12), tabblad Netwerk.</p></div>';
+}
+setInterval(()=>{if(TRAIL.t0==null)return;const ext=trailNet(),st=trailStore();document.querySelectorAll('.trail').forEach(el=>{const n=el.querySelector('.trailNet');if(n){n.textContent=ext.length;n.className='trailNet '+(ext.length?'bad':'ok')}const h=el.querySelector('.trailHosts');if(h&&ext.length)h.textContent='Naar: '+[...new Set(ext.map(x=>{try{return new URL(x.u).host}catch(_){return x.u}}))].join(', ');const so=el.querySelector('.trailStore');if(so)so.textContent=st?st+' item(s) gevonden':'niets'})},1500);
+
 /* ================= Proefperiode (PoC) en aanleveren ================= */
 const POC_DAYS=30;
 let pocSrc=null,pocLinked=null,pocHandoff=false,pocLayer='jij',pocVal=null,pocDry=null,pocRecept=null,pocMsg='',pocBusy=false;
@@ -2203,8 +2249,8 @@ function fbPanel(){
     '<div class="row"><button class="btn primary" type="button" data-pact="fbsend">'+(fb.status==='verstuurd'?'Mail opnieuw versturen':'Mail versturen')+'</button><button class="btn" type="button" data-pact="fbcopy">Kopieer mail</button><span class="small" id="fbMsg" role="status">'+(fb.status==='verstuurd'?'Verstuurd naar '+esc(fb.naam)+' op '+fmtD(fb.sentAt)+' (demo).':'')+'</span></div>';
 }
 function validateHtml(){
-  let h='<div class="row"><label class="btn" for="pocFiles" style="cursor:pointer">Kies de bestanden</label><input type="file" id="pocFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"><button class="btn" type="button" data-pact="oefen">Oefenen: standaardformaat</button><button class="btn" type="button" data-pact="oefenhix">Oefenen: export zoals uit een EPD</button><span class="busy">'+esc(pocMsg)+'</span></div>'+
-    '<p class="small muted">De controle gebeurt op deze computer. De oefenbestanden volgen de specificatie en zijn verzonnen, met patiëntnummers als code.</p>';
+  let h='<div class="row"><label class="btn" for="pocFiles" style="cursor:pointer">Open bestanden van deze computer</label><input type="file" id="pocFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"><button class="btn" type="button" data-pact="oefen">Oefenen: standaardformaat</button><button class="btn" type="button" data-pact="oefenhix">Oefenen: export zoals uit een EPD</button><span class="busy">'+esc(pocMsg)+'</span></div>'+
+    '<p class="small muted">Net als een bestand openen in Excel: de browser leest het bestand op deze computer. Er wordt niets geüpload of verstuurd. De oefenbestanden zijn verzonnen.</p>'+trailHtml('poc')+'';
   if(!pocVal)return h;
   const F=valFindings(pocVal),n={fout:0,let:0,ok:0};F.forEach(f=>n[f.lvl]++);
   const found=SPEC.bestanden.filter(f=>pocVal.bestanden[f.id]&&pocVal.bestanden[f.id].gevonden);
@@ -2315,8 +2361,8 @@ $('#pocBox').addEventListener('click',async e=>{
   const t=e.target.closest('[data-tpl]');if(t){const f=SPEC.bestanden.find(x=>x.id===t.dataset.tpl);pocCopy(templateCsv(f),'tplMsg-'+f.id);return}
   const b=e.target.closest('[data-breedadd]');if(b&&pocRecept){pocRecept.breed_afdelingen=[...new Set(pocRecept.breed_afdelingen.concat(b.dataset.breedadd))];log('Afdeling mag alles zien',b.dataset.breedadd);await pocRedry();return}
   const a=e.target.closest('[data-pact]');if(!a)return;const act=a.dataset.pact;
-  if(act==='oefen')await pocLoad(null,'D');
-  else if(act==='oefenhix')await pocLoad(null,'A');
+  if(act==='oefen'){trailOpen([],'oefen');await pocLoad(null,'D')}
+  else if(act==='oefenhix'){trailOpen([],'oefen');await pocLoad(null,'A')}
   else if(act==='koppel')await pocHandoffStart();
   else if(act==='use'){await approveRecipe(pocRecept,session.name);location.hash='poc';show()}
   else if(act==='fbcopy'){const m=fbMail();pocCopy('Onderwerp: '+m.onderwerp+'\n\n'+m.tekst,'fbMsg')}
@@ -2329,7 +2375,7 @@ $('#pocBox').addEventListener('click',async e=>{
 });
 $('#pocBox').addEventListener('change',async e=>{
   const t=e.target;
-  if(t.id==='pocFiles'){const fl=[...t.files];if(!fl.length)return;const texts=await Promise.all(fl.map(f=>f.text().then(text=>({name:f.name,text}))));await pocLoad(texts);return}
+  if(t.id==='pocFiles'){const fl=[...t.files];if(!fl.length)return;trailOpen(fl,'poc');const texts=await Promise.all(fl.map(f=>f.text().then(text=>({name:f.name,text}))));await pocLoad(texts);return}
   if(t.dataset.pchk){org.poc[t.dataset.pchk]=t.checked;if(t.dataset.pchk==='offline'&&t.checked)org.poc.offlineBy=session.name;saveOrgs();log(t.dataset.pchk==='trust'?'Veiligheidsinformatie besproken':'Offline-test bevestigd',t.checked?'ja':'nee');renderPoc();return}
   if(t.dataset.cmp){org.poc.vergelijk[t.dataset.cmp]=t.value===''?'':Number(t.value);saveOrgs();log('Vergelijking bijgewerkt',t.dataset.cmp+': '+t.value);renderPoc();return}
 });
@@ -2407,7 +2453,7 @@ $('#sigBody').addEventListener('input',e=>{const t=e.target.closest('textarea[da
 
 $('#sources').addEventListener('change',e=>{
   const inp=e.target.closest('input[type=file]');
-  if(inp){const k=inp.dataset.src,file=inp.files[0];if(!file)return;
+  if(inp){const k=inp.dataset.src,file=inp.files[0];if(!file)return;trailOpen([file],'bestanden');
     const rd=new FileReader();rd.onload=async()=>{try{const r=await call('file',{k,name:file.name,text:rd.result});files[k]=Object.assign({name:file.name},r);renderSources()}catch(err){alertMsg(k,err.message)}};rd.readAsText(file);return}
   const sel=e.target.closest('select[data-map]');
   if(sel){const f=files[sel.dataset.map];f.map[sel.dataset.field]=sel.value===''?null:+sel.value;f.how[sel.dataset.field]='handmatig'}
@@ -2419,7 +2465,7 @@ $('#sources').addEventListener('click',async e=>{const b=e.target.closest('[data
     await runChecks()}catch(err){alertMsg(k,err.message)}});
 $('#btnDemo').addEventListener('click',()=>loadDemo(+$('#demoDays').value));
 $('#scnList').addEventListener('click',e=>{const b=e.target.closest('.scnbtn');if(b)chooseSource(b.dataset.scn,b.querySelector('b').textContent)});
-$('#ownFiles').addEventListener('change',async e=>{const fl=[...e.target.files];if(!fl.length)return;const texts=await Promise.all(fl.map(f=>f.text().then(text=>({name:f.name,text}))));chooseSource(null,'Eigen exports ('+fl.length+' bestanden)',texts)});
+$('#ownFiles').addEventListener('change',async e=>{const fl=[...e.target.files];if(!fl.length)return;trailOpen(fl,'bron');const texts=await Promise.all(fl.map(f=>f.text().then(text=>({name:f.name,text}))));chooseSource(null,'Eigen exports ('+fl.length+' bestanden)',texts)});
 $('#btnAgent').addEventListener('click',runAgent);
 $('#btnLib').addEventListener('click',libOnly);
 $('#btnStop').addEventListener('click',()=>{asst.ctl&&asst.ctl.abort()});
