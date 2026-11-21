@@ -125,7 +125,7 @@ page("", "Klinq · Toezicht op dossierinzage voor de zorg met AccessGuard",
 <section><div class="wrap">
 <div class="sec-head"><span class="eyebrow">Zo werkt het</span><h2>In drie stappen van exportbestand naar oordeel</h2></div>
 <ol class="steps">
-<li><h3>Aanleveren</h3><p>Functioneel beheer zet vier exports klaar: inzagelog, zorgcontacten, medewerkers en rechten. Patiëntnummers mogen als code.</p></li>
+<li><h3>Aanleveren</h3><p>Functioneel beheer haalt vier soorten gegevens uit jullie systemen, zoals de auditlog uit het EPD. Het formaat maakt weinig uit: AccessGuard maakt zelf de koppeling.</p></li>
 <li><h3>Controleren</h3><p>AccessGuard legt elke inzage naast de zorgcontacten en de personeelslijst. Geen zorgcontact, eigen dossier, collega, noodtoegang of uit dienst? Dan volgt een signaal.</p></li>
 <li><h3>Beoordelen</h3><p>Een privacy officer bekijkt de signalen, legt een oordeel vast en maakt een rapport voor FG en bestuur. Namen zie je pas als je ze nodig hebt.</p></li>
 </ol>
@@ -182,7 +182,7 @@ page("hoe-het-werkt/", "Hoe AccessGuard dossierinzage controleert · Klinq",
 <p class="lead">De kern is eenvoudig: een inzage is in orde als er een reden voor is. AccessGuard zoekt die reden in de zorgcontacten en de personeelslijst. Waar hij ontbreekt, ontstaat een signaal.</p></div></section>
 <section style="padding-top:0"><div class="wrap">
 <ol class="steps">
-<li><h3>Bestanden klaarzetten</h3><p>Inzagelog, zorgcontacten, medewerkers en (aanbevolen) rechten. Eén maand is genoeg om te beginnen. Zie <a href="../aanleveren/">Aanleveren</a>.</p></li>
+<li><h3>Gegevens klaarzetten</h3><p>Inzagelog, zorgcontacten, medewerkers en (aanbevolen) rechten, zoals het bronsysteem ze exporteert. Eén maand is genoeg. Zie <a href="../aanleveren/">Aanleveren</a>.</p></li>
 <li><h3>Kwaliteit controleren</h3><p>Voordat er signalen komen, toetst AccessGuard de bestanden: zijn inzages aan medewerkers te koppelen, is er bij de meeste inzages een zorgcontact, blijft het aantal signalen beperkt?</p></li>
 <li><h3>Signalen beoordelen</h3><p>Per signaal een oordeel (terecht, onterecht, nader onderzoek) met verplichte toelichting. Vervolg zoals melding aan de FG en datalekafweging wordt vastgelegd.</p></li>
 </ol></div></section>
@@ -245,15 +245,25 @@ ftabs = "".join(f'<h3 style="margin-top:28px">{fn} <span class="note">· {t} · 
 page("aanleveren/", "Aanleverspecificatie inzagelog en zorgcontacten (NEN 7513) · Klinq",
  "Welke exportbestanden AccessGuard nodig heeft voor controle op dossierinzage: kolommen, voorbeelden en de koppeling naar FHIR AuditEvent, Encounter en SCIM.",
  f'''<section class="hero"><div class="wrap stack">
-<!--crumbs--><span class="eyebrow">Aanleverspecificatie 1.1</span><h1>Drie bestanden, dicht bij open standaarden</h1>
-<p class="lead">Streng in de kern, ruim aan de randen. Wat verplicht is ligt vast. Andere kolomnamen, codes en datumnotaties vertaalt AccessGuard, en hij laat zien wat er mist. De velden sluiten aan op NEN 7513 en de Nictiz-handreiking voor de toegangslog.</p></div></section>
+<!--crumbs--><span class="eyebrow">Aanleveren</span><h1>Vier soorten gegevens. Het formaat maakt weinig uit.</h1>
+<p class="lead">Exporteer de gegevens zoals jullie systemen ze geven. AccessGuard herkent de kolommen, maakt zelf een koppeling en vraagt het als iets niet duidelijk is. Functioneel beheer keurt de koppeling één keer goed; daarna werkt het elke maand vanzelf.</p></div></section>
 <section style="padding-top:0"><div class="wrap grid3">
 <div class="card"><span class="num">Voor jou</span><h3>Wat er nodig is</h3><p>Wie keek in welk dossier, wie was in zorg waar, wie werkt waar. En welke rechten accounts hebben. Eén maand is genoeg.</p></div>
 <div class="card"><span class="num">Voor functioneel beheer</span><h3>CSV met kopregel</h3><p>UTF-8, puntkomma of komma, datums als jjjj-mm-dd. In de applicatie staan sjablonen en een mail die je zo kunt doorsturen.</p></div>
 <div class="card"><span class="num">Voor IT en auditor</span><h3>Eén model, drie routes</h3><p>Niveau 1: CSV (nu). Niveau 2: FHIR NDJSON via Bulk Data (gepland). Niveau 3: live via FHIR en SCIM (gepland).</p></div>
 </div></section>
 <section style="padding-top:0"><div class="wrap">
-<div class="sec-head"><h2>De bestanden</h2></div>
+<div class="sec-head"><h2>Wat je aanlevert, en waar je het haalt</h2></div>
+<div class="tbl"><table><thead><tr><th>Gegevens</th><th>Wat staat erin</th><th>Waar haal je het?</th></tr></thead><tbody>
+<tr><td><b>1. Inzagelog</b></td><td>Wie heeft wanneer welk dossier geopend, en wat deed hij.</td><td>De auditlog of inzagelogging (NEN 7513) uit het EPD of ECD. Soms heet dit toegangslog of logging.</td></tr>
+<tr><td><b>2. Zorgcontacten</b></td><td>Afspraken, opnames, verblijf en zorgtrajecten, met patiënt, afdeling en datum.</td><td>Een overzicht of rapport uit het EPD of ECD.</td></tr>
+<tr><td><b>3. Medewerkers</b></td><td>Inlognaam, afdeling, functie en datum uit dienst.</td><td>De personeelslijst uit het HR-systeem, met de inlognaam van het EPD of ECD.</td></tr>
+<tr><td><b>4. Rechten</b> <span class="note">aanbevolen</span></td><td>Welke gebruikersgroepen of rollen elk account heeft.</td><td>Het autorisatieoverzicht uit het EPD of ECD.</td></tr>
+</tbody></table></div>
+<p class="note" style="margin-top:12px">Formaat: CSV of tekstbestand met kopregel (vanuit Excel: Opslaan als CSV). Eén maand is genoeg. Gebruikt het EPD andere afdelingsnamen dan de personeelslijst? Een lijstje met beide namen helpt.</p>
+</div></section>
+<section style="padding-top:0"><div class="wrap">
+<div class="sec-head"><h2>Standaardformaat: niet verplicht, wel sneller</h2><p class="lead">Met deze kolomnamen is er geen koppeling nodig. Ze sluiten aan op NEN 7513, de Nictiz-handreiking voor de toegangslog, FHIR en SCIM. Specificatie 1.1.</p></div>
 {ftabs}
 <h3 style="margin-top:28px">Waardenlijst voor "actie"</h3>
 <div class="tbl"><table><thead><tr><th>Waarde</th><th>Betekenis</th><th>FHIR AuditEvent</th></tr></thead><tbody>

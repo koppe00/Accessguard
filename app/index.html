@@ -297,6 +297,7 @@ fieldset.prep legend{padding:0 4px}
   </section>
 
   <section id="v-assistent" hidden style="display:flex;flex-direction:column;gap:18px">
+    <p class="demo-note" id="pocBack" hidden>Je koppelt de gegevens van je proefperiode. Na het goedkeuren ga je vanzelf terug. <button class="linkbtn" data-goto="poc">Terug naar de proefperiode</button></p>
     <div class="prose">
       <h2>Bron koppelen</h2>
       <p class="lead">Hier koppel je een nieuw EPD of ECD. De assistent bekijkt hoe de exportbestanden zijn opgebouwd. Daarna maakt hij een koppeling, test die en laat zien of de kwaliteit goed genoeg is.</p>
@@ -1624,16 +1625,21 @@ Een inzage is in orde als er relatiebewijs is bij de afdeling van de medewerker 
 
 RECEPT: JSON in precies deze vorm. Kolomnamen exact zoals in de bron, null als een kolom ontbreekt.
 {"naam":"korte naam van de bron","sector":"ziekenhuis|vvt|ggz",
- "inzagelog":{"tabel":"","tijdstip":"","tijdformaat":"","gebruiker":"","patient":"","actie":null,"inzage_acties":[],"btg_acties":[],"negeer_acties":[],"reden":null,"uitsluiten_accounts":[]},
+ "inzagelog":{"tabel":"","tijdstip":"","tijdformaat":"","gebruiker":"","patient":"","actie":null,"inzage_acties":[],"btg_acties":[],"negeer_acties":[],"reden":null,"uitsluiten_accounts":[],"resultaat":null,"geweigerd_waarden":[],"noodknop":null},
  "medewerkers":{"tabel":"","koppelsleutel":"","koppel_fallback":"geen","achternaam":null,"voorletters":null,"naam":null,"afdeling":"","functie":null,"uit_dienst":null,"uit_dienst_formaat":null,"actief":null},
- "relaties":{"tabel":"","patient":"","afdeling":"","datum":"","datum_tot":null,"datumformaat":"","lege_einddatum":"zelfde_dag"},
+ "relaties":{"tabel":"","patient":"","afdeling":"","datum":"","datum_tot":null,"datumformaat":"","lege_einddatum":"zelfde_dag","soort":null,"lopend_soorten":[]},
+ "rechten":{"tabel":"","gebruiker":"","groep":""} of null,
  "afdeling_mapping":{"waarde uit relaties.afdeling":"waarde uit medewerkers.afdeling"},
  "breed_afdelingen":["waarde uit medewerkers.afdeling"]}
 Formaten: "dd-mm-jjjj uu:mm:ss" | "dd-mm-jjjj" | "jjjj-mm-dd" | "jjjjmmdd" | "iso" | "epoch_ms".
 Acties: elke waarde uit de actiekolom staat in precies één van de drie lijsten. Inzage = een mens ziet of gebruikt het dossier (ook wijzigen, printen, exporteren). Negeer = technisch, zonder menselijke inzage (automatisch vooraf laden, sessie-events zonder patiënt). btg = noodtoegang.
 uitsluiten_accounts: alleen koppelingen en batchaccounts, nooit mensen.
 koppel_fallback "achternaam_voorletter": accountcode = ACHTERNAAM (hoofdletters, alleen letters) + eerste voorletter. Gebruik dit als een deel van de medewerkers in HR geen account heeft, maar de log zulke codes wel bevat.
-lege_einddatum: "zelfde_dag" (een contact op één dag) of "lopend" (verblijf of zorgtraject zonder einddatum loopt nog).
+lege_einddatum: "zelfde_dag" (een contact op één dag) of "lopend" (verblijf of zorgtraject zonder einddatum loopt nog). Heeft de tabel een kolom met het soort contact, zet die in "soort" en zet in "lopend_soorten" de waarden waarvoor een lege einddatum betekent dat het nog loopt (zoals opname, verblijf, zorgtraject); andere soorten tellen dan als één dag.
+resultaat: kolom met de uitkomst van de handeling (NEN 7513 EventOutcomeIndicator), als die er is. Zet in "geweigerd_waarden" de waarden die een geweigerde of mislukte poging betekenen (bijvoorbeeld geweigerd, denied, 4, 8, 12). Die regels tellen niet als inzage.
+noodknop: kolom die met ja/nee aangeeft of de noodknop is gebruikt, als die er is. Ja telt als noodtoegang.
+koppelsleutel: de kolom in de medewerkerstabel die overeenkomt met de gebruiker in de log. Dat kan een inlognaam zijn, maar ook een personeelsnummer.
+rechten: een tabel met per account de gebruikersgroepen of rollen, als die er is. Anders null.
 afdeling_mapping: nodig als relaties andere namen of codes gebruiken dan de medewerkerstabel. Afdelingen zonder eigen relaties zijn meestal breed.
 
 KWALITEITSPOORTEN (dry_run rapporteert ze): tijdstippen minstens 99% leesbaar, alle acties ingedeeld, minstens 97% van de inzages gekoppeld aan een medewerker, minstens 80% met relatiebewijs, ruis maximaal 1% van de inzages in signalen. Echte afwijkingen horen wél als signaal te blijven bestaan: verberg nooit signalen door mensen uit te sluiten of alles breed te maken.
@@ -1761,7 +1767,11 @@ async function approveRecipe(rc,door){
     log('Koppeling goedgekeurd',(rc.naam||'Koppeling')+' door '+door);
     feedItem('ok','Goedgekeurd en in gebruik','De koppeling "'+(rc.naam||'')+'" is bewaard. Een volgende bron met dezelfde opbouw wordt vanzelf gekoppeld.');
     $('#dataNote').textContent='Bron gekoppeld: '+(rc.naam||'koppeling')+', '+nf(meta.inzages.rows)+' inzages.';
-    await runChecks();location.hash='signalen';
+    await runChecks();
+    if(pocHandoff&&org&&org.poc){pocHandoff=false;$('#pocBack').hidden=true;const r=(asst.final&&asst.final.rc===rc&&asst.final.r)||await call('dry',{recept:rc}).catch(()=>null);
+      if(r){pocLinked={naam:rc.naam||'Koppeling',door,r};org.poc.kwaliteit={fouten:0,via:rc.naam||'koppeling',poorten:r.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm})),at:Date.now()};saveOrgs()}
+      location.hash='poc';show();return}
+    location.hash='signalen';
   }catch(e){$('#agentState').textContent='Gebruiken lukte niet: '+e.message}
 }
 
@@ -2078,7 +2088,7 @@ const SPEC={versie:'1.1',bestanden:[
 
 /* ================= Proefperiode (PoC) en aanleveren ================= */
 const POC_DAYS=30;
-let pocLayer='jij',pocVal=null,pocDry=null,pocRecept=null,pocMsg='',pocBusy=false;
+let pocSrc=null,pocLinked=null,pocHandoff=false,pocLayer='jij',pocVal=null,pocDry=null,pocRecept=null,pocMsg='',pocBusy=false;
 function normalizeOrg(o){
   if(!o)return o;
   if(!o.plan)o.plan=o.billing&&o.billing.paid?'abonnement':'proef';
@@ -2093,10 +2103,17 @@ function pocCopy(text,msgId){const m=document.getElementById(msgId);
   const fb=()=>{if(m){m.className='err';m.textContent='Kopiëren lukte niet. Selecteer de tekst zelf.'}};
   try{navigator.clipboard.writeText(text).then(()=>{if(m){m.className='toast';m.textContent='Gekopieerd.'}},fb)}catch(_){fb()}}
 function templateCsv(f){return f.velden.map(v=>v.k).join(';')+'\n'+f.velden.map(v=>v.vb).join(';')}
+const SOORTEN=[
+  {id:'inzagelog',titel:'Inzagelog',nodig:'nodig',wat:'Wie heeft wanneer welk dossier geopend, en wat deed hij.',waar:'De auditlog of inzagelogging (NEN 7513) uit het EPD of ECD. Soms heet dit toegangslog of logging.'},
+  {id:'zorgcontacten',titel:'Zorgcontacten',nodig:'nodig',wat:'Afspraken, opnames, verblijf en zorgtrajecten: welke patiënt, welke afdeling, welke datum.',waar:'Een overzicht of rapport uit het EPD of ECD.'},
+  {id:'medewerkers',titel:'Medewerkers',nodig:'nodig',wat:'Inlognaam, afdeling, functie en datum uit dienst.',waar:'De personeelslijst uit het HR-systeem, met de inlognaam die in het EPD of ECD wordt gebruikt.'},
+  {id:'rechten',titel:'Rechten',nodig:'aanbevolen',wat:'Welke gebruikersgroepen of rollen elk account heeft.',waar:'Het autorisatieoverzicht uit het EPD of ECD.'}];
 function fbMail(){
-  const fb=org.poc.fb,files=SPEC.bestanden.map(f=>'- '+f.naam+' ('+f.titel.toLowerCase()+', '+f.bron+(f.nodig!=='verplicht'?', '+f.nodig:'')+')\n  kolommen: '+f.velden.map(v=>v.k+(v.eis==='moet'?'*':'')).join(', ')).join('\n');
-  return{onderwerp:'Verzoek: exports klaarzetten voor de proefperiode van AccessGuard',
-    tekst:'Hoi '+(fb.naam||'collega')+',\n\nWe doen een proefperiode met AccessGuard, voor de controle op dossierinzage (NEN 7513). Wil jij deze exports klaarzetten? Eén maand aan gegevens is genoeg.\n\n'+files+'\n\n* = verplicht. Gebruik een puntkomma of komma tussen de kolommen en een kopregel met de kolomnamen. Datums als jjjj-mm-dd, tijden als jjjj-mm-ddTuu:mm:ss.\n\nTips:\n- Gebruik in alle bestanden hetzelfde patiëntnummer en dezelfde inlognaam.\n- Je mag patiëntnummers vervangen door codes, zolang je overal dezelfde methode en sleutel gebruikt. Dan ziet AccessGuard geen echte nummers.\n- Heten de kolommen of codes in jullie systeem anders? Lever aan wat er is. AccessGuard vertaalt het en laat zien wat er nog mist.\n\nDe volledige uitleg met voorbeelden staat in AccessGuard onder Proefperiode, bij "Voor functioneel beheer".\n\nDank je wel!\n'+(session?session.name:'')};
+  const fb=org.poc.fb;
+  const soorten=SOORTEN.map((x,i)=>(i+1)+'. '+x.titel+(x.nodig==='aanbevolen'?' (aanbevolen)':'')+': '+x.wat+'\n   Waar: '+x.waar).join('\n');
+  const kol=SPEC.bestanden.filter(f=>f.nodig!=='optioneel').map(f=>'- '+f.naam+': '+f.velden.filter(v=>v.eis!=='optioneel').map(v=>v.k).join(', ')).join('\n');
+  return{onderwerp:'Verzoek: gegevens klaarzetten voor de proefperiode van AccessGuard',
+    tekst:'Hoi '+(fb.naam||'collega')+',\n\nWe doen een proefperiode met AccessGuard, voor de controle op dossierinzage (NEN 7513). Wil jij deze gegevens uit onze systemen halen? Eén maand is genoeg.\n\n'+soorten+'\n\nHet formaat maakt weinig uit. Exporteer de gegevens zoals het systeem ze geeft, als CSV of tekstbestand met een kopregel (vanuit Excel: Opslaan als CSV). AccessGuard herkent de kolommen zelf en vraagt het als iets niet duidelijk is.\n\nKun je deze kolomnamen aanhouden? Dan gaat het sneller, maar het hoeft niet:\n'+kol+'\n\nTips:\n- Gebruik in alle bestanden hetzelfde patiëntnummer en dezelfde inlognaam.\n- Je mag patiëntnummers vervangen door codes, zolang je overal dezelfde methode en sleutel gebruikt.\n\nDe volledige uitleg staat in AccessGuard onder Proefperiode, bij "Voor functioneel beheer".\n\nDank je wel!\n'+(session?session.name:'')};
 }
 function pct(x){return x==null?'—':String(x).replace('.',',')+'%'}
 
@@ -2141,7 +2158,7 @@ function pocCriteria(){
   const q=org.poc.kwaliteit,g=n=>q&&q.poorten?q.poorten.find(x=>x.naam===n):null,V=org.poc.vergelijk;
   const st=(ok,partial)=>ok?'ok':partial?'let':'open';
   const C=[];
-  C.push({t:'Bestanden volgens afspraak',s:q?st(q.fouten===0,q.fouten>0):'open',w:q?(q.fouten?q.fouten+' punt(en) om op te lossen':'Alles in orde'):'Nog niet gecontroleerd'});
+  C.push({t:'Gegevens compleet en gekoppeld',s:q?(q.wacht?'let':st(q.fouten===0,q.fouten>0)):'open',w:q?(q.wacht?'Eigen opbouw: koppeling nog maken':q.via?'Via koppeling "'+q.via+'"':q.fouten?q.fouten+' punt(en) om op te lossen':'Alles in orde'):'Nog niet gecontroleerd'});
   [['Inzages zijn aan een medewerker gekoppeld','Inzages gekoppeld aan een medewerker'],['Bij inzages is een zorgcontact gevonden','Zorgcontact gevonden bij inzages'],['Niet te veel signalen','Niet te veel signalen']].forEach(([n,t])=>{const x=g(n);C.push({t,s:x?(x.ok?'ok':'let'):'open',w:x?x.waarde+' (moet: '+x.norm+')':'Nog niet getest'})});
   const h=+V.huidig||0,gv=+V.gevonden||0;C.push({t:'Bekende gevallen teruggevonden',s:h?(gv>=h?'ok':gv/h>=.8?'let':'let'):'open',w:h?gv+' van '+h+' gevallen uit jullie huidige werkwijze':'Nog niet vergeleken'});
   C.push({t:'Offline-test gedaan',s:org.poc.offline||org.poc.offlineAuto?'ok':'open',w:org.poc.offlineAuto?'Gemeten: controles werkten zonder internet':org.poc.offline?'Bevestigd door '+(org.poc.offlineBy||'gebruiker'):'Nog niet gedaan'});
@@ -2151,11 +2168,12 @@ function pocCriteria(){
 const LBL={ok:'goed',let:'let op',open:'open',fout:'oplossen'};
 function layerSwitch(){return'<div class="seg" role="group" aria-label="Uitleg voor">'+[['jij','Voor jou'],['fb','Voor functioneel beheer'],['it','Voor IT en auditor']].map(([k,l])=>'<button class="chip" type="button" data-layer="'+k+'" aria-pressed="'+(pocLayer===k)+'">'+l+'</button>').join('')+'</div>'}
 function specHtml(){
-  if(pocLayer==='jij')return'<p>AccessGuard heeft drie bestanden nodig, en liefst een vierde met rechten. Een vijfde, met afdelingsnamen, is alleen nodig als het EPD andere namen gebruikt dan de personeelslijst. Meestal zet functioneel beheer ze klaar. Eén maand aan gegevens is genoeg voor de proefperiode.</p>'+
-    '<div class="rolegrid">'+SPEC.bestanden.map(f=>'<div class="rolecard"><b>'+esc(f.titel)+'</b><span class="small">'+esc(f.b1)+'</span><span class="muted small">Uit: '+esc(f.bron)+(f.nodig!=='verplicht'?' · '+f.nodig:'')+'</span></div>').join('')+'</div>'+
-    '<div class="borg"><b class="small">Veilig aanleveren</b><ul class="limits small"><li>De bestanden blijven op jouw computer. Ze gaan niet naar de leverancier.</li><li>Functioneel beheer mag patiëntnummers vervangen door codes. Dan ziet AccessGuard geen echte nummers.</li><li>Kolommen of codes anders genoemd? Geen probleem. AccessGuard vertaalt ze en laat zien wat er nog mist.</li></ul></div>'+
-    '<h4>Vraag functioneel beheer om de bestanden</h4>'+fbPanel();
-  if(pocLayer==='fb')return'<p class="small">Lever CSV-bestanden aan (UTF-8, kopregel met kolomnamen, puntkomma of komma). Kolomnamen zoals hieronder. Eén maand aan gegevens is genoeg.</p>'+
+  if(pocLayer==='jij')return'<p><b>Je hebt vier soorten gegevens nodig. Het formaat maakt weinig uit.</b> Exporteer ze zoals je bronsysteem ze geeft. AccessGuard herkent de kolommen en maakt zelf de koppeling. Is iets niet duidelijk, dan vraagt hij het.</p>'+
+    '<div class="rolegrid">'+SOORTEN.map((x,i)=>'<div class="rolecard"><b>'+(i+1)+'. '+esc(x.titel)+(x.nodig==='aanbevolen'?' <span class="muted small">(aanbevolen)</span>':'')+'</b><span class="small">'+esc(x.wat)+'</span><span class="small"><b>Waar haal je het?</b> '+esc(x.waar)+'</span></div>').join('')+'</div>'+
+    '<div class="borg"><b class="small">Formaat</b><ul class="limits small"><li>Een CSV- of tekstbestand met een kopregel. Werk je in Excel? Kies Opslaan als CSV.</li><li>Eén maand aan gegevens is genoeg.</li><li>Andere kolomnamen, codes of datumnotaties zijn geen probleem.</li><li>Nog sneller: gebruik de kolomnamen bij "Voor functioneel beheer". Dan is er geen koppeling nodig.</li><li>Gebruikt het EPD andere afdelingsnamen dan de personeelslijst? Dan helpt een lijstje met beide namen.</li></ul></div>'+
+    '<div class="borg"><b class="small">Veilig aanleveren</b><ul class="limits small"><li>De bestanden blijven op jouw computer. Ze gaan niet naar de leverancier.</li><li>Functioneel beheer mag patiëntnummers vervangen door codes. Dan ziet AccessGuard geen echte nummers.</li></ul></div>'+
+    '<h4>Vraag functioneel beheer om de gegevens</h4>'+fbPanel();
+  if(pocLayer==='fb')return'<p class="small"><b>Dit is het standaardformaat. Het is niet verplicht.</b> Lever je de gegevens anders aan, dan maakt AccessGuard zelf een koppeling en vraag jij die goed te keuren. Met dit formaat is dat niet nodig en gaat het sneller. CSV met kopregel (UTF-8, puntkomma of komma), één maand aan gegevens.</p>'+
     SPEC.bestanden.map(f=>'<details class="howto" open><summary>'+esc(f.naam)+' · '+esc(f.titel)+(f.nodig!=='verplicht'?' ('+f.nodig+')':'')+'</summary><p class="small">'+esc(f.b1)+' Uit: '+esc(f.bron)+'.</p><div class="tablebox"><table class="spectable"><thead><tr><th>Kolom</th><th>Nodig</th><th>Wat erin staat</th><th>Voorbeeld</th><th>Als het ontbreekt</th></tr></thead><tbody>'+
       f.velden.map(v=>'<tr><td class="mono">'+esc(v.k)+'</td><td>'+esc(v.eis)+'</td><td>'+esc(v.fb)+'</td><td class="mono">'+esc(v.vb)+'</td><td class="small muted">'+esc(v.mist)+'</td></tr>').join('')+'</tbody></table></div>'+
       '<div class="row"><button class="btn" type="button" data-tpl="'+f.id+'">Kopieer kopregel en voorbeeld</button><span class="small" id="tplMsg-'+f.id+'"></span></div></details>').join('')+
@@ -2181,7 +2199,7 @@ function fbPanel(){
     '<div class="row"><button class="btn primary" type="button" data-pact="fbsend">'+(fb.status==='verstuurd'?'Mail opnieuw versturen':'Mail versturen')+'</button><button class="btn" type="button" data-pact="fbcopy">Kopieer mail</button><span class="small" id="fbMsg" role="status">'+(fb.status==='verstuurd'?'Verstuurd naar '+esc(fb.naam)+' op '+fmtD(fb.sentAt)+' (demo).':'')+'</span></div>';
 }
 function validateHtml(){
-  let h='<div class="row"><label class="btn" for="pocFiles" style="cursor:pointer">Kies de bestanden</label><input type="file" id="pocFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"><button class="btn" type="button" data-pact="oefen">Gebruik oefenbestanden</button><span class="busy">'+esc(pocMsg)+'</span></div>'+
+  let h='<div class="row"><label class="btn" for="pocFiles" style="cursor:pointer">Kies de bestanden</label><input type="file" id="pocFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"><button class="btn" type="button" data-pact="oefen">Oefenen: standaardformaat</button><button class="btn" type="button" data-pact="oefenhix">Oefenen: export zoals uit een EPD</button><span class="busy">'+esc(pocMsg)+'</span></div>'+
     '<p class="small muted">De controle gebeurt op deze computer. De oefenbestanden volgen de specificatie en zijn verzonnen, met patiëntnummers als code.</p>';
   if(!pocVal)return h;
   const F=valFindings(pocVal),n={fout:0,let:0,ok:0};F.forEach(f=>n[f.lvl]++);
@@ -2189,7 +2207,9 @@ function validateHtml(){
   h+='<div class="srcov">'+SPEC.bestanden.map(f=>{const b=pocVal.bestanden[f.id];return'<div><b>'+esc(f.titel)+'</b> · '+(b&&b.gevonden?esc(b.tabel)+', '+nf(b.regels)+' regels':'<span class="'+(f.nodig==='verplicht'?'err':'muted')+'">niet gevonden</span>')+'</div>'}).join('')+'</div>'+
     '<p class="small"><b>'+(n.fout?n.fout+' punt(en) om op te lossen':'Geen fouten')+'</b>'+(n.let?', '+n.let+' om op te letten':'')+'.</p>'+
     '<ul class="checks">'+F.sort((a,b)=>({fout:0,let:1,ok:2}[a.lvl]-{fout:0,let:1,ok:2}[b.lvl])).map(f=>'<li><span class="res '+(f.lvl==='ok'?'ok':f.lvl==='let'?'wait':'bad')+'">'+LBL[f.lvl]+'</span><span><b>'+esc(f.bestand)+'</b><span class="why">'+esc(pocLayer==='jij'?f.b1:pocLayer==='fb'?f.fb:f.it)+'</span></span></li>').join('')+'</ul>';
-  if(!pocVal.recept){h+='<p class="small">Deze bestanden volgen de standaard nog niet. Wijken alleen de kolomnamen af? Dan kan de assistent ze vertalen.</p><button class="btn" type="button" data-goto="assistent">Naar Bron koppelen</button>';return h}
+  if(!pocVal.recept){
+    if(pocLinked){const r=pocLinked.r;h+='<h4>Gekoppeld</h4><p class="small">Koppeling "'+esc(pocLinked.naam)+'", goedgekeurd door '+esc(pocLinked.door)+'.</p><ul class="checks">'+r.poorten.map(g=>'<li><span class="res '+(g.ok?'ok':'bad')+'">'+(g.ok?'goed':'niet goed')+'</span><span><b>'+esc(g.naam)+'</b><span class="why">'+esc(g.waarde)+' · moet zijn: '+esc(g.norm)+'</span></span></li>').join('')+'</ul><p class="ok-text">Deze gegevens zijn in gebruik. <button class="linkbtn" data-goto="signalen">Bekijk de signalen</button></p>';return h}
+    h+='<div class="borg"><b class="small">Deze bestanden hebben een eigen opbouw. Dat is prima.</b><p class="small">AccessGuard maakt nu zelf een koppeling. Eerst kijkt hij of er al een koppeling bestaat voor dit systeem. Zo niet, dan maakt de assistent er een. Hij ziet alleen kolomnamen en gemaskeerde voorbeelden, geen gegevens. Daarna keurt functioneel beheer de koppeling goed en ga je hier verder.</p><div class="row"><button class="btn primary" type="button" data-pact="koppel">Koppeling laten maken</button></div></div>';return h}
   if(pocDry){
     const r=pocDry;
     h+='<h4>Test met deze bestanden</h4><ul class="checks">'+r.poorten.map(g=>'<li><span class="res '+(g.ok?'ok':'bad')+'">'+(g.ok?'goed':'niet goed')+'</span><span><b>'+esc(g.naam)+'</b><span class="why">'+esc(g.waarde)+' · moet zijn: '+esc(g.norm)+'</span></span></li>').join('')+'</ul>';
@@ -2255,18 +2275,25 @@ function renderPoc(){
   h+='<div class="card"><h3>'+(trial?'Stap 4. ':'')+'Zelf de veiligheid nagaan</h3><h4>Offline-test</h4>'+offlineHtml()+'<h4>Veiligheidsinformatie</h4>'+trustHtml()+'</div>';
   $('#pocBox').innerHTML=h;
 }
-async function pocLoad(files){
-  pocBusy=true;pocMsg='Bestanden controleren…';pocDry=null;pocRecept=null;renderPoc();
+async function pocLoad(files,scn){
+  pocBusy=true;pocMsg='Bestanden controleren…';pocDry=null;pocRecept=null;pocLinked=null;pocSrc={files,scn:scn||'D'};renderPoc();
   try{
-    if(files)await call('scn_files',{files});else await call('scn_load',{id:'D'});
+    if(files)await call('scn_files',{files});else await call('scn_load',{id:scn||'D'});
     pocVal=await call('validate',{spec:SPEC});
     const F=valFindings(pocVal),fouten=F.filter(f=>f.lvl==='fout').length;
     if(pocVal.recept){pocRecept=pocVal.recept;pocDry=await call('dry',{recept:pocRecept})}
-    org.poc.kwaliteit={fouten,poorten:pocDry?pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm})):null,at:Date.now()};saveOrgs();
+    org.poc.kwaliteit={fouten:pocVal.recept?fouten:null,wacht:!pocVal.recept,poorten:pocDry?pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm})):null,at:Date.now()};saveOrgs();
     log('Aanlevering gecontroleerd',(files?files.length+' eigen bestanden':'oefenbestanden')+' · '+fouten+' fout(en)');
     pocMsg='';
   }catch(e){pocMsg='Controleren lukte niet: '+e.message}
   pocBusy=false;renderPoc();
+}
+async function pocHandoffStart(){
+  if(!pocSrc)return;pocHandoff=true;$('#pocBack').hidden=false;
+  location.hash='assistent';show();
+  await chooseSource(pocSrc.files?null:pocSrc.scn,pocSrc.files?'Bestanden uit de proefperiode':'Oefenexport',pocSrc.files||null);
+  await libOnly();
+  if(!asst.final){feedItem('','De assistent maakt een nieuwe koppeling','Dit duurt meestal 30 tot 90 seconden.');await runAgent()}
 }
 async function pocRedry(){pocDry=await call('dry',{recept:pocRecept});org.poc.kwaliteit.poorten=pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm}));saveOrgs();renderPoc()}
 
@@ -2284,7 +2311,9 @@ $('#pocBox').addEventListener('click',async e=>{
   const t=e.target.closest('[data-tpl]');if(t){const f=SPEC.bestanden.find(x=>x.id===t.dataset.tpl);pocCopy(templateCsv(f),'tplMsg-'+f.id);return}
   const b=e.target.closest('[data-breedadd]');if(b&&pocRecept){pocRecept.breed_afdelingen=[...new Set(pocRecept.breed_afdelingen.concat(b.dataset.breedadd))];log('Afdeling mag alles zien',b.dataset.breedadd);await pocRedry();return}
   const a=e.target.closest('[data-pact]');if(!a)return;const act=a.dataset.pact;
-  if(act==='oefen')await pocLoad(null);
+  if(act==='oefen')await pocLoad(null,'D');
+  else if(act==='oefenhix')await pocLoad(null,'A');
+  else if(act==='koppel')await pocHandoffStart();
   else if(act==='use'){await approveRecipe(pocRecept,session.name);location.hash='poc';show()}
   else if(act==='fbcopy'){const m=fbMail();pocCopy('Onderwerp: '+m.onderwerp+'\n\n'+m.tekst,'fbMsg')}
   else if(act==='fbsend'){const fb=org.poc.fb,msg=$('#fbMsg');
