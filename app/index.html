@@ -984,7 +984,7 @@ function transform(rc){
   const il=rc.inzagelog||{},md=rc.medewerkers||{},rl=rc.relaties||{};
   const LT=T(il.tabel),MT=T(md.tabel),RT=T(rl.tabel);
   if(!LT||!MT||!RT)throw new Error(errs.join('; '));
-  const li={t:C(LT,il.tijdstip,1),u:C(LT,il.gebruiker,1),p:C(LT,il.patient,1),a:C(LT,il.actie),r:C(LT,il.reden)};
+  const li={t:C(LT,il.tijdstip,1),u:C(LT,il.gebruiker,1),p:C(LT,il.patient,1),a:C(LT,il.actie),r:C(LT,il.reden),res:C(LT,il.resultaat),nk:C(LT,il.noodknop)};const weig=new Set((il.geweigerd_waarden||[]).map(x=>String(x).toLowerCase()));let geweigerd=0;
   const mi={k:C(MT,md.koppelsleutel),an:C(MT,md.achternaam),vl:C(MT,md.voorletters),n:C(MT,md.naam),af:C(MT,md.afdeling,1),fn:C(MT,md.functie),ui:C(MT,md.uit_dienst),ac:C(MT,md.actief)};
   const ri_={p:C(RT,rl.patient,1),af:C(RT,rl.afdeling,1),d:C(RT,rl.datum,1),dt:C(RT,rl.datum_tot),s:C(RT,rl.soort)};const lopSet=new Set((rl.lopend_soorten||[]).map(x=>String(x).toLowerCase()));
   if(errs.length)throw new Error(errs.join('; '));
@@ -1011,8 +1011,9 @@ function transform(rc){
   for(const row of LT.rows){
     const t=parseFmt(V(row,li.t),il.tijdformaat);if(t==null){const s=shape(V(row,li.t));unparsedShapes[s]=(unparsedShapes[s]||0)+1;continue}parsed++;if(t>maxT)maxT=t;
     const u=V(row,li.u);if(excl.has(u)){exclAccRows++;continue}
-    const a=li.a>=0?V(row,li.a):'';let isB=false;
-    if(li.a>=0){if(btg.has(a))isB=true;else if(neg.has(a)){exclAct[a]=(exclAct[a]||0)+1;continue}else if(!ins.has(a)){unclass[a||'(leeg)']=(unclass[a||'(leeg)']||0)+1;continue}}
+    if(li.res>=0&&weig.has(V(row,li.res).toLowerCase())){geweigerd++;continue}
+    const a=li.a>=0?V(row,li.a):'';let isB=li.nk>=0&&/^(ja|j|yes|y|true|1|waar)$/i.test(V(row,li.nk));
+    if(li.a>=0){if(btg.has(a)||isB)isB=true;else if(neg.has(a)){exclAct[a]=(exclAct[a]||0)+1;continue}else if(!ins.has(a)){unclass[a||'(leeg)']=(unclass[a||'(leeg)']||0)+1;continue}}
     const p=V(row,li.p);if(!p){emptyPat++;continue}
     inz.push({tijdstip:t,gebruiker:u,patient:p,btg:isB,btg_reden:V(row,li.r),bron:rc.naam||''});
   }
@@ -1020,7 +1021,7 @@ function transform(rc){
   meds.forEach(m=>{if(m.uit_dienst_datum!=null&&m.uit_dienst_datum>maxT){m.in_dienst=true;m.uit_dienst_datum=null}});
   const aut=[];const rr=rc.rechten;
   if(rr&&rr.tabel&&SRC[rr.tabel]){const RRT=SRC[rr.tabel],gi=RRT.headers.indexOf(rr.gebruiker),ri2=RRT.headers.indexOf(rr.groep);if(gi>=0&&ri2>=0)for(const row of RRT.rows){const g=V(row,gi),r=V(row,ri2);if(g&&r)aut.push({gebruiker:g,rol:r})}}
-  return{D:{inzages:inz,contacten:con,patienten:[],medewerkers:meds,autorisaties:aut},stats:{rows:LT.rows.length,parsed,unparsedShapes,exclAccRows,exclAct,unclass,emptyPat,unmapped,medAfd:[...medAfd],derivedAll,empMap}};
+  return{D:{inzages:inz,contacten:con,patienten:[],medewerkers:meds,autorisaties:aut},stats:{rows:LT.rows.length,parsed,geweigerd,unparsedShapes,exclAccRows,exclAct,unclass,emptyPat,unmapped,medAfd:[...medAfd],derivedAll,empMap}};
 }
 function dryRun(rc){
   const {D:D2,stats:s}=transform(rc);
@@ -1094,7 +1095,7 @@ function validateSpec(spec){
     if(!name)name=Object.keys(SRC).find(n=>!used.has(n)&&moet.every(k=>SRC[n].headers.map(norm).includes(k))&&f.velden.filter(v=>SRC[n].headers.map(norm).includes(v.k)).length>=moet.length);
     if(!name){out.bestanden[f.id]={gevonden:false};continue}
     used.add(name);const t=SRC[name],H=t.headers.map(norm),col={};f.velden.forEach(v=>{const i=H.indexOf(v.k);if(i>=0)col[v.k]={i,h:t.headers[i]}});
-    const r={gevonden:true,tabel:name,regels:t.rows.length,ontbreekt_moet:moet.filter(k=>!col[k]),ontbreekt_aanbevolen:f.velden.filter(v=>v.eis!=='moet'&&!col[v.k]).map(v=>v.k),extra:t.headers.filter((h,i)=>!f.velden.some(v=>v.k===H[i])),leeg:{},datum:{},col};
+    const r={gevonden:true,tabel:name,regels:t.rows.length,ontbreekt_moet:moet.filter(k=>!col[k]),ontbreekt_aanbevolen:f.velden.filter(v=>(v.eis==='aanbevolen'||v.eis==='bij noodtoegang')&&!col[v.k]).map(v=>v.k),extra:t.headers.filter((h,i)=>!f.velden.some(v=>v.k===H[i])),leeg:{},datum:{},col};
     const n=t.rows.length||1;
     f.velden.forEach(v=>{const c=col[v.k];if(!c)return;let e=0;for(const row of t.rows)if(!String(row[c.i]||'').trim())e++;
       if(v.eis==='moet'&&e)r.leeg[v.k]=Math.round(1000*e/n)/10;
@@ -1103,24 +1104,32 @@ function validateSpec(spec){
     if(f.id==='inzagelog'&&col.actie){const cnt={};for(const row of t.rows){const a=String(row[col.actie.i]||'').trim();cnt[a]=(cnt[a]||0)+1}
       r.acties={onbekend:{},vertaald:{},verdeling:{}};Object.entries(cnt).forEach(([v,k])=>{const m=syn[v.toLowerCase()];if(!m)r.acties.onbekend[v||'(leeg)']=k;else{r.acties.verdeling[m]=(r.acties.verdeling[m]||0)+k;if(m!==v.toLowerCase())r.acties.vertaald[v]=m}})}
     if(f.id==='inzagelog'&&col.soort_account){const sys=new Set();for(const row of t.rows)if(String(row[col.soort_account.i]||'').trim().toLowerCase()==='systeem')sys.add(String(row[col.gebruiker?col.gebruiker.i:0]||'').trim());r.systeemaccounts=[...sys]}
+    const YES=/^(ja|j|yes|y|true|1|waar)$/i,NO=/^(nee|n|no|false|0|onwaar)$/i,FAIL=/^(geweigerd|geweigerd.*|refused|denied|fout|error|mislukt|failure|4|8|12|nok)$/i,OKR=/^(gelukt|geslaagd|success|ok|0|toegestaan)$/i;
+    if(f.id==='inzagelog'&&col.resultaat){const c={gelukt:0,geweigerd:0,onbekend:{}},w=new Set();for(const row of t.rows){const x=String(row[col.resultaat.i]||'').trim();if(OKR.test(x)||!x)c.gelukt++;else if(FAIL.test(x)){c.geweigerd++;w.add(x)}else c.onbekend[x]=(c.onbekend[x]||0)+1}c.geweigerd_waarden=[...w];r.resultaten=c}
+    if(f.id==='inzagelog'&&col.noodknop){let k=0;for(const row of t.rows)if(YES.test(String(row[col.noodknop.i]||'').trim()))k++;r.noodknop=k}
+    if(f.id==='inzagelog'&&col.behandelrelatie){let ja=0,nee=0;for(const row of t.rows){const x=String(row[col.behandelrelatie.i]||'').trim();if(YES.test(x))ja++;else if(NO.test(x))nee++}r.bron_behandelrelatie={ja,nee}}
     if(col.patient){let hx=0,m=0;for(const row of t.rows){const x=String(row[col.patient.i]||'').trim();if(!x)continue;m++;if(/^[0-9a-f]{12,}$/i.test(x))hx++;if(m>=500)break}r.pseudoniem=m>0&&hx/m>.9}
     out.bestanden[f.id]=r;
   }
   const B=out.bestanden,val=(id,k)=>{const b=B[id];if(!b||!b.gevonden||!b.col[k])return null;const t=SRC[b.tabel];return t.rows.map(r=>String(r[b.col[k].i]||'').trim())};
   const lg=val('inzagelog','gebruiker'),lp=val('inzagelog','patient'),mg=val('medewerkers','gebruiker'),cp=val('zorgcontacten','patient'),ca=val('zorgcontacten','afdeling'),ma=val('medewerkers','afdeling');
   const sys=new Set((B.inzagelog&&B.inzagelog.systeemaccounts)||[]);
-  if(lg&&mg){const M=new Set(mg),U=new Set(lg.filter(x=>x&&!sys.has(x)));let hit=0;U.forEach(u=>{if(M.has(u))hit++});out.kruis.gebruikers_pct=U.size?Math.round(1000*hit/U.size)/10:100;out.kruis.gebruikers_onbekend=U.size-hit}
+  const match=(M0)=>{const M=new Set(M0),U=new Set(lg.filter(x=>x&&!sys.has(x)));let hit=0;U.forEach(u=>{if(M.has(u))hit++});return{pct:U.size?Math.round(1000*hit/U.size)/10:100,onb:U.size-hit}};
+  let sleutel='gebruiker';
+  if(lg&&mg){const a=match(mg);out.kruis.gebruikers_pct=a.pct;out.kruis.gebruikers_onbekend=a.onb;
+    const mp=val('medewerkers','personeelsnummer');if(mp){const b=match(mp.filter(Boolean));if(b.pct>a.pct+5){sleutel='personeelsnummer';out.kruis.gebruikers_pct=b.pct;out.kruis.gebruikers_onbekend=b.onb;out.kruis.sleutel='personeelsnummer'}}}
+  const amap={};{const fa=val('afdelingen','bron_afdeling'),ta=val('afdelingen','afdeling');if(fa&&ta)fa.forEach((x,i)=>{if(x&&ta[i])amap[x]=ta[i]});if(Object.keys(amap).length)out.kruis.afdeling_vertaald=Object.keys(amap).length}
   if(lp&&cp){const P=new Set(cp),L=new Set(lp.filter(Boolean));let hit=0;L.forEach(x=>{if(P.has(x))hit++});out.kruis.patienten_pct=L.size?Math.round(1000*hit/L.size)/10:100}
-  if(ca&&ma){const MA=new Set(ma.filter(Boolean)),CA=new Set(ca.filter(Boolean));out.kruis.afdeling_zonder_match=[...CA].filter(a=>!MA.has(a)).slice(0,8);out.kruis.breed_kandidaten=[...MA].filter(a=>!CA.has(a)).slice(0,8)}
+  if(ca&&ma){const MA=new Set(ma.filter(Boolean)),CA=new Set(ca.filter(Boolean).map(a=>amap[a]!=null?amap[a]:a));out.kruis.afdeling_zonder_match=[...CA].filter(a=>!MA.has(a)).slice(0,8);out.kruis.breed_kandidaten=[...MA].filter(a=>!CA.has(a)).slice(0,8)}
   const ok=['inzagelog','zorgcontacten','medewerkers'].every(id=>B[id]&&B[id].gevonden&&!B[id].ontbreekt_moet.length);
   if(ok){
     const h=(id,k)=>B[id].col[k]?B[id].col[k].h:null,va=B.inzagelog.acties||{verdeling:{}},orig=code=>{const t=SRC[B.inzagelog.tabel],i=B.inzagelog.col.actie.i,s2=new Set();for(const row of t.rows){const a=String(row[i]||'').trim();if(syn[a.toLowerCase()]===code)s2.add(a)}return[...s2]};
     out.recept={naam:'AccessGuard-standaard '+spec.versie,sector:'ziekenhuis',
-      inzagelog:{tabel:B.inzagelog.tabel,tijdstip:h('inzagelog','tijdstip'),tijdformaat:'iso',gebruiker:h('inzagelog','gebruiker'),patient:h('inzagelog','patient'),actie:h('inzagelog','actie'),inzage_acties:['inzage','wijziging','afdruk','export'].flatMap(orig),btg_acties:orig('noodtoegang'),negeer_acties:orig('automatisch'),reden:h('inzagelog','reden'),uitsluiten_accounts:[...sys]},
-      medewerkers:{tabel:B.medewerkers.tabel,koppelsleutel:h('medewerkers','gebruiker'),koppel_fallback:'geen',achternaam:null,voorletters:null,naam:h('medewerkers','naam'),afdeling:h('medewerkers','afdeling'),functie:h('medewerkers','functie'),uit_dienst:h('medewerkers','uit_dienst'),uit_dienst_formaat:'iso',actief:null},
+      inzagelog:{tabel:B.inzagelog.tabel,tijdstip:h('inzagelog','tijdstip'),tijdformaat:'iso',gebruiker:h('inzagelog','gebruiker'),patient:h('inzagelog','patient'),actie:h('inzagelog','actie'),inzage_acties:['inzage','wijziging','afdruk','export'].flatMap(orig),btg_acties:orig('noodtoegang'),negeer_acties:orig('automatisch'),reden:h('inzagelog','reden'),uitsluiten_accounts:[...sys],resultaat:h('inzagelog','resultaat'),geweigerd_waarden:(B.inzagelog.resultaten&&B.inzagelog.resultaten.geweigerd_waarden)||[],noodknop:h('inzagelog','noodknop')},
+      medewerkers:{tabel:B.medewerkers.tabel,koppelsleutel:h('medewerkers',sleutel),koppel_fallback:'geen',achternaam:null,voorletters:null,naam:h('medewerkers','naam'),afdeling:h('medewerkers','afdeling'),functie:h('medewerkers','functie'),uit_dienst:h('medewerkers','uit_dienst'),uit_dienst_formaat:'iso',actief:null},
       relaties:{tabel:B.zorgcontacten.tabel,patient:h('zorgcontacten','patient'),afdeling:h('zorgcontacten','afdeling'),datum:h('zorgcontacten','begin'),datum_tot:h('zorgcontacten','einde'),datumformaat:'iso',lege_einddatum:'zelfde_dag',soort:h('zorgcontacten','soort'),lopend_soorten:['verblijf','zorgtraject']},
       rechten:B.rechten&&B.rechten.gevonden&&!B.rechten.ontbreekt_moet.length?{tabel:B.rechten.tabel,gebruiker:h('rechten','gebruiker'),groep:h('rechten','groep')}:null,
-      afdeling_mapping:{},breed_afdelingen:out.kruis.breed_kandidaten||[]};
+      afdeling_mapping:amap,breed_afdelingen:out.kruis.breed_kandidaten||[]};
   }
   out.bestanden=Object.fromEntries(Object.entries(B).map(([k,v])=>{const c=Object.assign({},v);delete c.col;return[k,c]}));
   return out;
@@ -2026,14 +2035,19 @@ const SYSTEMS=[['Ziekenhuis-EPD',['HiX','Epic','Anders']],['Zorgdossier (ECD)',[
 
 /* ---------- Aanleverspecificatie (versie 1.0) ----------
    Eén model, drie lezers: gebruiker (b1), functioneel beheer (fb), IT en auditor (fhir). */
-const SPEC={versie:'1.0',bestanden:[
+const SPEC={versie:'1.1',bestanden:[
   {id:'inzagelog',naam:'inzagelog.csv',titel:'Inzagelog',nodig:'verplicht',bron:'EPD of ECD',b1:'Wie heeft wanneer welk dossier geopend.',std:'FHIR AuditEvent, IHE BALP; velden volgens NEN 7513',velden:[
-    {k:'tijdstip',eis:'moet',type:'datum',b1:'Wanneer het dossier werd geopend',fb:'Datum en tijd: jjjj-mm-ddTuu:mm:ss',vb:'2026-10-14T09:32:10',it:'AuditEvent.recorded',mist:'Zonder tijdstip kunnen we niet zien of er een zorgcontact was.'},
-    {k:'gebruiker',eis:'moet',b1:'Wie keek',fb:'Inlognaam of accountcode. Dezelfde als in medewerkers.csv',vb:'JANSENA',it:'AuditEvent.agent.who.identifier',mist:'Zonder gebruiker weten we niet wie keek.'},
-    {k:'patient',eis:'moet',b1:'In welk dossier',fb:'Patiënt- of cliëntnummer, of een code. Dezelfde als in zorgcontacten.csv',vb:'1004211',it:'AuditEvent.entity.what (Patient)',mist:'Zonder patiënt weten we niet welk dossier is geopend.'},
-    {k:'actie',eis:'moet',b1:'Wat er gebeurde',fb:'inzage, wijziging, afdruk, export, noodtoegang of automatisch. Eigen codes mogen ook; die vertalen we.',vb:'inzage',it:'AuditEvent.action + subtype (zie waardenlijst)',mist:'Zonder actie tellen we alles als inzage, ook automatische handelingen.'},
+    {k:'tijdstip',eis:'moet',type:'datum',b1:'Wanneer het dossier werd geopend',fb:'Datum en tijd: jjjj-mm-ddTuu:mm:ss',vb:'2026-10-14T09:32:10',it:'AuditEvent.recorded; NEN 7513 EventDateTime',mist:'Zonder tijdstip kunnen we niet zien of er een zorgcontact was.'},
+    {k:'gebruiker',eis:'moet',b1:'Wie keek',fb:'Inlognaam of accountcode. Dezelfde als in medewerkers.csv',vb:'JANSENA',it:'AuditEvent.agent.who (requestor = true); NEN 7513 UserID',mist:'Zonder gebruiker weten we niet wie keek.'},
+    {k:'patient',eis:'moet',b1:'In welk dossier',fb:'Patiënt- of cliëntnummer, of een code. Dezelfde als in zorgcontacten.csv',vb:'1004211',it:'AuditEvent.entity.what (Patient, entity.role = 1); NEN 7513 ParticipantObjectID',mist:'Zonder patiënt weten we niet welk dossier is geopend.'},
+    {k:'actie',eis:'moet',b1:'Wat er gebeurde',fb:'inzage, wijziging, afdruk, export, noodtoegang of automatisch. Eigen codes mogen ook; die vertalen we.',vb:'inzage',it:'AuditEvent.action + subtype (zie waardenlijst); NEN 7513 EventActionCode',mist:'Zonder actie tellen we alles als inzage, ook automatische handelingen.'},
     {k:'reden',eis:'bij noodtoegang',b1:'De reden bij noodtoegang',fb:'Vrije tekst. Alleen nodig bij noodtoegang',vb:'Spoedopvang, patiënt niet aanspreekbaar',it:'AuditEvent.purposeOfEvent / agent.purposeOfUse',mist:'Zonder reden kunnen we noodtoegang niet beoordelen.'},
-    {k:'soort_account',eis:'aanbevolen',b1:'Of een persoon of een systeem keek',fb:'persoon of systeem',vb:'persoon',it:'AuditEvent.agent.type',mist:'Systeemaccounts moeten we dan zelf herkennen.'}]},
+    {k:'soort_account',eis:'aanbevolen',b1:'Of een persoon of een systeem keek',fb:'persoon of systeem',vb:'persoon',it:'AuditEvent.agent.type',mist:'Systeemaccounts moeten we dan zelf herkennen.'},
+    {k:'resultaat',eis:'optioneel',b1:'Of het openen gelukt is',fb:'gelukt of geweigerd. Geweigerde pogingen tellen niet als inzage',vb:'gelukt',it:'AuditEvent.outcome; NEN 7513 EventOutcomeIndicator (0 = gelukt)',mist:'Dan tellen we elke regel als gelukte inzage.'},
+    {k:'noodknop',eis:'optioneel',b1:'Of noodtoegang is gebruikt',fb:'ja of nee. Alternatief voor actie = noodtoegang',vb:'nee',it:'AuditEvent.purposeOfEvent = ETREAT; Nictiz Controle.noodknopGebruikt',mist:'Dan halen we noodtoegang alleen uit de kolom actie.'},
+    {k:'rol',eis:'optioneel',b1:'In welke rol iemand keek',fb:'De rol waarmee is ingelogd',vb:'Verpleegkundige',it:'AuditEvent.agent.role; NEN 7513 RoleIDCode',mist:'Geen gevolg voor de controles.'},
+    {k:'gegevenscategorie',eis:'optioneel',b1:'Welk deel van het dossier',fb:'Bijvoorbeeld medicatie, verslag of heel dossier',vb:'heel dossier',it:'AuditEvent.entity.type; Nictiz Gegevenscategorie',mist:'Geen gevolg voor de controles.'},
+    {k:'behandelrelatie',eis:'optioneel',b1:'Of het bronsysteem zelf een behandelrelatie zag',fb:'ja of nee, als het systeem dit vastlegt',vb:'ja',it:'Nictiz Controle.behandelrelatie; NEN 7513 behandelrelatieProtocol',mist:'Dan vergelijken we niet met het oordeel van het bronsysteem.'}]},
   {id:'zorgcontacten',naam:'zorgcontacten.csv',titel:'Zorgcontacten',nodig:'verplicht',bron:'EPD of ECD',b1:'Wanneer een patiënt op welke afdeling zorg kreeg. Dat laat zien of een medewerker een reden had om te kijken.',std:'FHIR Encounter, Appointment, EpisodeOfCare, CareTeam (nl-core waar mogelijk)',velden:[
     {k:'patient',eis:'moet',b1:'Welke patiënt',fb:'Hetzelfde nummer of dezelfde code als in inzagelog.csv',vb:'1004211',it:'Encounter.subject',mist:'Zonder patiënt kunnen we het contact niet koppelen.'},
     {k:'afdeling',eis:'moet',b1:'Bij welke afdeling, locatie of team',fb:'Precies dezelfde schrijfwijze als in medewerkers.csv',vb:'Cardiologie',it:'Encounter.serviceProvider / serviceType, of CareTeam.name',mist:'Zonder afdeling weten we niet wie zorg gaf.'},
@@ -2045,10 +2059,15 @@ const SPEC={versie:'1.0',bestanden:[
     {k:'naam',eis:'aanbevolen',b1:'De naam',fb:'Voor- en achternaam',vb:'Anouk Jansen',it:'SCIM User.name.formatted',mist:'Dan zie je alleen de accountcode, ook als je namen wilt tonen.'},
     {k:'afdeling',eis:'moet',b1:'Waar de medewerker werkt',fb:'Dezelfde schrijfwijze als in zorgcontacten.csv',vb:'Cardiologie',it:'SCIM enterprise User.department',mist:'Zonder afdeling kunnen we het zorgcontact niet controleren.'},
     {k:'functie',eis:'aanbevolen',b1:'De functie',fb:'Functienaam',vb:'Verpleegkundige',it:'SCIM User.title',mist:'Dan kunnen we rechten niet met de functie vergelijken.'},
-    {k:'uit_dienst',eis:'aanbevolen',type:'datum',b1:'Wanneer iemand uit dienst ging',fb:'jjjj-mm-dd. Leeg als iemand nog in dienst is',vb:'2026-10-13',it:'SCIM User.active = false',mist:'Dan zien we niet of iemand na uit dienst nog keek.'}]},
+    {k:'uit_dienst',eis:'aanbevolen',type:'datum',b1:'Wanneer iemand uit dienst ging',fb:'jjjj-mm-dd. Leeg als iemand nog in dienst is',vb:'2026-10-13',it:'SCIM User.active = false',mist:'Dan zien we niet of iemand na uit dienst nog keek.'},
+    {k:'personeelsnummer',eis:'optioneel',b1:'Het personeelsnummer',fb:'Alleen nodig als de inzagelog personeelsnummers gebruikt in plaats van inlognamen',vb:'104233',it:'SCIM enterprise User.employeeNumber',mist:'Dan koppelen we alleen op inlognaam.'},
+    {k:'soort',eis:'optioneel',b1:'Of iemand intern of extern is',fb:'intern, extern, stagiair of systeem',vb:'intern',it:'SCIM User.userType',mist:'Geen gevolg voor de controles.'}]},
   {id:'rechten',naam:'rechten.csv',titel:'Rechten',nodig:'aanbevolen',bron:'EPD of ECD (autorisaties)',b1:'Welke rechten een account heeft. Nodig voor de controle op toegangsrechten.',std:'SCIM 2.0 Group',velden:[
     {k:'gebruiker',eis:'moet',b1:'Het account',fb:'Dezelfde inlognaam als in medewerkers.csv',vb:'JANSENA',it:'SCIM Group.members.value',mist:'Zonder account weten we niet van wie de rechten zijn.'},
-    {k:'groep',eis:'moet',b1:'De gebruikersgroep of rol',fb:'Naam van de groep of rol',vb:'EPD-Verpleegkunde',it:'SCIM Group.displayName',mist:'Zonder groep weten we niet welke rechten iemand heeft.'}]}],
+    {k:'groep',eis:'moet',b1:'De gebruikersgroep of rol',fb:'Naam van de groep of rol',vb:'EPD-Verpleegkunde',it:'SCIM Group.displayName',mist:'Zonder groep weten we niet welke rechten iemand heeft.'}]},
+  {id:'afdelingen',naam:'afdelingen.csv',titel:'Afdelingen',nodig:'optioneel',bron:'eigen lijst',b1:'Welke afdelingsnaam in het EPD of ECD hoort bij welke afdeling in de personeelslijst. Alleen nodig als die namen verschillen.',std:'FHIR ConceptMap',velden:[
+    {k:'bron_afdeling',eis:'moet',b1:'De naam in het EPD of ECD',fb:'Zoals in zorgcontacten.csv',vb:'CARD-POLI',it:'ConceptMap.group.element.code',mist:'Zonder bronnaam kunnen we niet vertalen.'},
+    {k:'afdeling',eis:'moet',b1:'De naam in de personeelslijst',fb:'Zoals in medewerkers.csv',vb:'Cardiologie',it:'ConceptMap.group.element.target.code',mist:'Zonder doelnaam kunnen we niet vertalen.'}]}],
   acties:[
     {code:'inzage',fhir:'R (read)',b1:'Een dossier bekijken',syn:['inz','view','read','r','chart review','note viewed','dossier.geopend','medicatie.bekeken','bekeken','inzien']},
     {code:'wijziging',fhir:'U (update)',b1:'Iets in een dossier veranderen of toevoegen',syn:['wij','update','u','c','create','order entry','rapportage.toegevoegd','wijzigen','toevoegen']},
@@ -2075,7 +2094,7 @@ function pocCopy(text,msgId){const m=document.getElementById(msgId);
   try{navigator.clipboard.writeText(text).then(()=>{if(m){m.className='toast';m.textContent='Gekopieerd.'}},fb)}catch(_){fb()}}
 function templateCsv(f){return f.velden.map(v=>v.k).join(';')+'\n'+f.velden.map(v=>v.vb).join(';')}
 function fbMail(){
-  const fb=org.poc.fb,files=SPEC.bestanden.map(f=>'- '+f.naam+' ('+f.titel.toLowerCase()+', '+f.bron+(f.nodig==='aanbevolen'?', aanbevolen':'')+')\n  kolommen: '+f.velden.map(v=>v.k+(v.eis==='moet'?'*':'')).join(', ')).join('\n');
+  const fb=org.poc.fb,files=SPEC.bestanden.map(f=>'- '+f.naam+' ('+f.titel.toLowerCase()+', '+f.bron+(f.nodig!=='verplicht'?', '+f.nodig:'')+')\n  kolommen: '+f.velden.map(v=>v.k+(v.eis==='moet'?'*':'')).join(', ')).join('\n');
   return{onderwerp:'Verzoek: exports klaarzetten voor de proefperiode van AccessGuard',
     tekst:'Hoi '+(fb.naam||'collega')+',\n\nWe doen een proefperiode met AccessGuard, voor de controle op dossierinzage (NEN 7513). Wil jij deze exports klaarzetten? Eén maand aan gegevens is genoeg.\n\n'+files+'\n\n* = verplicht. Gebruik een puntkomma of komma tussen de kolommen en een kopregel met de kolomnamen. Datums als jjjj-mm-dd, tijden als jjjj-mm-ddTuu:mm:ss.\n\nTips:\n- Gebruik in alle bestanden hetzelfde patiëntnummer en dezelfde inlognaam.\n- Je mag patiëntnummers vervangen door codes, zolang je overal dezelfde methode en sleutel gebruikt. Dan ziet AccessGuard geen echte nummers.\n- Heten de kolommen of codes in jullie systeem anders? Lever aan wat er is. AccessGuard vertaalt het en laat zien wat er nog mist.\n\nDe volledige uitleg met voorbeelden staat in AccessGuard onder Proefperiode, bij "Voor functioneel beheer".\n\nDank je wel!\n'+(session?session.name:'')};
 }
@@ -2088,6 +2107,7 @@ function valFindings(v){
   SPEC.bestanden.forEach(f=>{
     const b=B[f.id];
     if(!b||!b.gevonden){
+      if(f.nodig==='optioneel')return;
       if(f.nodig==='verplicht')add('fout',f.titel,'Het bestand met '+f.titel.toLowerCase()+' ontbreekt. '+f.b1+' Zonder dit bestand kan AccessGuard niet controleren.','Lever '+f.naam+' aan met de kolommen '+f.velden.filter(x=>x.eis==='moet').map(x=>x.k).join(', ')+'. Heten de kolommen anders? Gebruik dan Bron koppelen: de assistent vertaalt ze.','Geen tabel gevonden met de verplichte velden van '+f.id+' ('+f.std+').');
       else add('let',f.titel,'Het bestand met '+f.titel.toLowerCase()+' ontbreekt. De controle op toegangsrechten wordt dan overgeslagen.','Lever '+f.naam+' aan voor de controle op toegangsrechten (aanbevolen).',f.std+': niet aangeleverd; A-controles beperkt.');
       return}
@@ -2103,12 +2123,17 @@ function valFindings(v){
       if(ver.length)add('ok',f.titel,'Een paar soorten handelingen hebben een andere naam. AccessGuard heeft ze vertaald.','Vertaald: '+ver.slice(0,8).map(([a,c])=>a+' → '+c).join(', ')+'.','ConceptMap toegepast: '+ver.map(([a,c])=>a+'→'+c).join(', ')+'.');
       const auto=b.acties.verdeling.automatisch||0;if(auto)add('ok',f.titel,nf(auto)+' regels zijn automatische handelingen. Die tellen niet als inzage.','Regels met actie "automatisch": '+nf(auto)+'. Niet meegeteld.','action=automatisch → uitgesloten van analyse.')}
     if(b.systeemaccounts&&b.systeemaccounts.length)add('ok',f.titel,b.systeemaccounts.length+' systeemaccount(s) herkend. Die tellen niet als persoon.','Accounts met soort_account = systeem: '+b.systeemaccounts.slice(0,5).join(', ')+'. Uitgesloten van de controles.','agent.type=systeem → uitgesloten.');
+    if(f.id==='inzagelog'&&b.resultaten){const g=b.resultaten,onb=Object.keys(g.onbekend);if(g.geweigerd)add('ok',f.titel,nf(g.geweigerd)+' pogingen zijn geweigerd door het systeem. Die tellen niet als inzage.','Regels met resultaat '+g.geweigerd_waarden.join(', ')+': '+nf(g.geweigerd)+'. Niet meegeteld als inzage.','outcome ≠ 0: '+g.geweigerd+' records uitgesloten.');if(onb.length)add('let',f.titel,'In de kolom resultaat staan waarden die we niet kennen: '+onb.slice(0,5).join(', ')+'. Die regels tellen we als gelukt.','Onbekende waarden in "resultaat": '+onb.slice(0,8).join(', ')+'. Gebruik gelukt of geweigerd.','EventOutcomeIndicator onbekend: '+onb.join(', ')+'.')}
+    if(f.id==='inzagelog'&&b.noodknop)add('ok',f.titel,nf(b.noodknop)+' keer is de noodknop gebruikt. Die regels worden als noodtoegang gecontroleerd.','Kolom noodknop = ja bij '+nf(b.noodknop)+' regels. Telt als noodtoegang, ook als actie iets anders zegt.','Controle.noodknopGebruikt = true: '+b.noodknop+'.');
+    if(f.id==='inzagelog'&&b.bron_behandelrelatie){const x=b.bron_behandelrelatie,tot=x.ja+x.nee;if(tot)add('ok',f.titel,'Het bronsysteem legt zelf vast of er een behandelrelatie was. Bij '+pct(Math.round(1000*x.nee/tot)/10)+' van de inzages zag het systeem er geen.','Kolom behandelrelatie: ja '+nf(x.ja)+', nee '+nf(x.nee)+'. AccessGuard controleert zelf ook; verschillen zie je bij de signalen.','Controle.behandelrelatie aanwezig (ja '+x.ja+' / nee '+x.nee+').')}
     if(f.id==='inzagelog'&&b.pseudoniem)add('ok',f.titel,'Patiëntnummers zijn als code aangeleverd. Goed: AccessGuard hoeft zo geen echte nummers te zien.','De patiëntkolom bevat codes in plaats van nummers. Gebruik in alle bestanden dezelfde methode en sleutel.','Bronpseudonimisering gedetecteerd (hex ≥ 12 tekens).');
   });
   const K=v.kruis;
   if(K.gebruikers_pct!=null){if(K.gebruikers_pct<97)add(K.gebruikers_pct<80?'fout':'let','Samenhang','Van de personen in de inzagelog staat '+pct(K.gebruikers_pct)+' in de medewerkerslijst. Dat moet bijna iedereen zijn.','Inlognamen in inzagelog.csv en medewerkers.csv komen voor '+pct(K.gebruikers_pct)+' overeen. Gebruik in beide dezelfde inlognaam. Systeemaccounts markeren met soort_account = systeem.','Join agent.who ↔ User.userName: '+K.gebruikers_pct+'%.');else add('ok','Samenhang','Bijna alle personen in de inzagelog staan in de medewerkerslijst ('+pct(K.gebruikers_pct)+').')}
   if(K.patienten_pct!=null){if(K.patienten_pct<50)add('let','Samenhang','Bij veel inzages staat de patiënt niet in de zorgcontacten. Gebruiken beide bestanden hetzelfde nummer of dezelfde code?','Patiënten uit inzagelog.csv gevonden in zorgcontacten.csv: '+pct(K.patienten_pct)+'. Controleer of beide hetzelfde nummer of dezelfde pseudonimiseringssleutel gebruiken.','Join entity.what ↔ Encounter.subject: '+K.patienten_pct+'%.');else add('ok','Samenhang','Patiënten in de inzagelog en in de zorgcontacten komen overeen ('+pct(K.patienten_pct)+').')}
-  if(K.afdeling_zonder_match&&K.afdeling_zonder_match.length)add('let','Samenhang','Een paar afdelingsnamen in de zorgcontacten komen niet voor in de medewerkerslijst: '+K.afdeling_zonder_match.join(', ')+'.','Gebruik in zorgcontacten.csv en medewerkers.csv dezelfde schrijfwijze voor afdelingen. Niet gevonden: '+K.afdeling_zonder_match.join(', ')+'.','Afdeling-join op exacte waarde; geen ConceptMap voor afdelingen.');
+  if(K.afdeling_zonder_match&&K.afdeling_zonder_match.length)add('let','Samenhang','Een paar afdelingsnamen in de zorgcontacten komen niet voor in de medewerkerslijst: '+K.afdeling_zonder_match.join(', ')+'.','Gebruik in zorgcontacten.csv en medewerkers.csv dezelfde schrijfwijze, of lever afdelingen.csv aan met bron_afdeling en afdeling. Niet gevonden: '+K.afdeling_zonder_match.join(', ')+'.','Afdeling-join op exacte waarde; lever een ConceptMap (afdelingen.csv) aan.');
+  if(K.sleutel==='personeelsnummer')add('ok','Samenhang','De inzagelog gebruikt personeelsnummers. AccessGuard koppelt daarom op personeelsnummer.','In inzagelog.csv staan personeelsnummers in plaats van inlognamen. Koppeling via medewerkers.personeelsnummer. Let op: rechten.csv moet dan ook personeelsnummers gebruiken.','Join agent.who ↔ User.employeeNumber.');
+  if(K.afdeling_vertaald)add('ok','Samenhang',K.afdeling_vertaald+' afdelingsnamen worden vertaald met de afdelingenlijst.','afdelingen.csv: '+K.afdeling_vertaald+' vertalingen van EPD-naam naar personeelsnaam toegepast.','ConceptMap afdelingen: '+K.afdeling_vertaald+' mappings.');
   if(K.breed_kandidaten&&K.breed_kandidaten.length)add('ok','Samenhang','Deze afdelingen hebben zelf geen zorgcontacten: '+K.breed_kandidaten.join(', ')+'. We gaan ervan uit dat ze alle patiënten mogen zien. Klopt dat niet, pas het dan aan bij Instellingen.','Afdelingen zonder eigen zorgcontacten, ingesteld als "mag alles zien": '+K.breed_kandidaten.join(', ')+'.','breed_afdelingen afgeleid: '+K.breed_kandidaten.join(', ')+'.');
   return F;
 }
@@ -2126,12 +2151,12 @@ function pocCriteria(){
 const LBL={ok:'goed',let:'let op',open:'open',fout:'oplossen'};
 function layerSwitch(){return'<div class="seg" role="group" aria-label="Uitleg voor">'+[['jij','Voor jou'],['fb','Voor functioneel beheer'],['it','Voor IT en auditor']].map(([k,l])=>'<button class="chip" type="button" data-layer="'+k+'" aria-pressed="'+(pocLayer===k)+'">'+l+'</button>').join('')+'</div>'}
 function specHtml(){
-  if(pocLayer==='jij')return'<p>AccessGuard heeft vier bestanden nodig. Meestal zet functioneel beheer die klaar. Eén maand aan gegevens is genoeg voor de proefperiode.</p>'+
-    '<div class="rolegrid">'+SPEC.bestanden.map(f=>'<div class="rolecard"><b>'+esc(f.titel)+'</b><span class="small">'+esc(f.b1)+'</span><span class="muted small">Uit: '+esc(f.bron)+(f.nodig==='aanbevolen'?' · aanbevolen':'')+'</span></div>').join('')+'</div>'+
+  if(pocLayer==='jij')return'<p>AccessGuard heeft drie bestanden nodig, en liefst een vierde met rechten. Een vijfde, met afdelingsnamen, is alleen nodig als het EPD andere namen gebruikt dan de personeelslijst. Meestal zet functioneel beheer ze klaar. Eén maand aan gegevens is genoeg voor de proefperiode.</p>'+
+    '<div class="rolegrid">'+SPEC.bestanden.map(f=>'<div class="rolecard"><b>'+esc(f.titel)+'</b><span class="small">'+esc(f.b1)+'</span><span class="muted small">Uit: '+esc(f.bron)+(f.nodig!=='verplicht'?' · '+f.nodig:'')+'</span></div>').join('')+'</div>'+
     '<div class="borg"><b class="small">Veilig aanleveren</b><ul class="limits small"><li>De bestanden blijven op jouw computer. Ze gaan niet naar de leverancier.</li><li>Functioneel beheer mag patiëntnummers vervangen door codes. Dan ziet AccessGuard geen echte nummers.</li><li>Kolommen of codes anders genoemd? Geen probleem. AccessGuard vertaalt ze en laat zien wat er nog mist.</li></ul></div>'+
     '<h4>Vraag functioneel beheer om de bestanden</h4>'+fbPanel();
   if(pocLayer==='fb')return'<p class="small">Lever CSV-bestanden aan (UTF-8, kopregel met kolomnamen, puntkomma of komma). Kolomnamen zoals hieronder. Eén maand aan gegevens is genoeg.</p>'+
-    SPEC.bestanden.map(f=>'<details class="howto" open><summary>'+esc(f.naam)+' · '+esc(f.titel)+(f.nodig==='aanbevolen'?' (aanbevolen)':'')+'</summary><p class="small">'+esc(f.b1)+' Uit: '+esc(f.bron)+'.</p><div class="tablebox"><table class="spectable"><thead><tr><th>Kolom</th><th>Nodig</th><th>Wat erin staat</th><th>Voorbeeld</th><th>Als het ontbreekt</th></tr></thead><tbody>'+
+    SPEC.bestanden.map(f=>'<details class="howto" open><summary>'+esc(f.naam)+' · '+esc(f.titel)+(f.nodig!=='verplicht'?' ('+f.nodig+')':'')+'</summary><p class="small">'+esc(f.b1)+' Uit: '+esc(f.bron)+'.</p><div class="tablebox"><table class="spectable"><thead><tr><th>Kolom</th><th>Nodig</th><th>Wat erin staat</th><th>Voorbeeld</th><th>Als het ontbreekt</th></tr></thead><tbody>'+
       f.velden.map(v=>'<tr><td class="mono">'+esc(v.k)+'</td><td>'+esc(v.eis)+'</td><td>'+esc(v.fb)+'</td><td class="mono">'+esc(v.vb)+'</td><td class="small muted">'+esc(v.mist)+'</td></tr>').join('')+'</tbody></table></div>'+
       '<div class="row"><button class="btn" type="button" data-tpl="'+f.id+'">Kopieer kopregel en voorbeeld</button><span class="small" id="tplMsg-'+f.id+'"></span></div></details>').join('')+
     '<details class="howto"><summary>Waardenlijst voor de kolom "actie"</summary><div class="tablebox"><table><thead><tr><th>Waarde</th><th>Betekenis</th><th>Ook herkend</th></tr></thead><tbody>'+SPEC.acties.map(a=>'<tr><td class="mono">'+a.code+'</td><td>'+esc(a.b1)+'</td><td class="small muted">'+esc(a.syn.slice(0,5).join(', '))+'</td></tr>').join('')+'</tbody></table></div></details>'+
@@ -2142,11 +2167,12 @@ function specHtml(){
     SPEC.bestanden.flatMap(f=>f.velden.map((v,i)=>'<tr><td>'+(i?'':'<b>'+esc(f.titel)+'</b><br><span class="small muted">'+esc(f.std)+'</span>')+'</td><td class="mono">'+v.k+'</td><td>'+v.eis+'</td><td class="mono small">'+esc(v.it)+'</td></tr>')).join('')+'</tbody></table></div>'+
     '<h4>Waardenlijst actie (als ConceptMap)</h4><div class="tablebox"><table><thead><tr><th>Code</th><th>AuditEvent</th><th>Synoniemen</th></tr></thead><tbody>'+SPEC.acties.map(a=>'<tr><td class="mono">'+a.code+'</td><td class="mono small">'+esc(a.fhir)+'</td><td class="small muted">'+esc(a.syn.join(', '))+'</td></tr>').join('')+'</tbody></table></div>'+
     '<h4>Niveaus van aanleveren</h4><ul class="limits small"><li><b>Niveau 1, nu:</b> CSV-bestanden zoals hierboven. Afwijkende bestanden worden vertaald via een vastgelegde koppeling (kolomtoewijzing plus ConceptMap), die de organisatie goedkeurt.</li><li><b>Niveau 2, gepland:</b> FHIR NDJSON volgens FHIR Bulk Data, voor AuditEvent, Encounter en EpisodeOfCare.</li><li><b>Niveau 3, gepland:</b> live koppeling via FHIR (IHE BALP) en SCIM voor medewerkers en groepen.</li></ul>'+
-    '<h4>Uitgangspunten</h4><ul class="limits small"><li>Streng in de kern: wat "moet" en de waardenlijst liggen vast en zijn versiebeheerd (specificatie '+SPEC.versie+').</li><li>Ruim aan de randen: andere kolomnamen, codes en datumnotaties worden vertaald en zichtbaar gemeld.</li><li>Dataminimalisatie: alleen de velden die een controle nodig heeft. Pseudonimiseren bij de bron (bijvoorbeeld HMAC-SHA-256) wordt ondersteund.</li><li>Buiten scope: bewaren van de logging (5 jaar) en Wabvpz-verzoeken. Die blijven bij het bronsysteem.</li><li>Voor de controle "rechten passen bij functie" is een norm nodig (welke groep hoort bij welke functie). Zonder norm wordt die controle overgeslagen.</li></ul>';
+    '<h4>Uitgangspunten</h4><ul class="limits small"><li>Velden sluiten aan op NEN 7513 (EventDateTime, UserID, RoleIDCode, ParticipantObjectID, EventActionCode, EventOutcomeIndicator) en op de Nictiz-handreiking voor de toegangslog (resultaat, noodknop, behandelrelatie).</li><li>Streng in de kern: wat "moet" en de waardenlijst liggen vast en zijn versiebeheerd (specificatie '+SPEC.versie+').</li><li>Ruim aan de randen: andere kolomnamen, codes en datumnotaties worden vertaald en zichtbaar gemeld.</li><li>Dataminimalisatie: alleen de velden die een controle nodig heeft. Pseudonimiseren bij de bron (bijvoorbeeld HMAC-SHA-256) wordt ondersteund.</li><li>Buiten scope: bewaren van de logging (5 jaar) en Wabvpz-verzoeken. Die blijven bij het bronsysteem.</li><li>Voor de controle "rechten passen bij functie" is een norm nodig (welke groep hoort bij welke functie). Zonder norm wordt die controle overgeslagen.</li></ul>';
 }
 function exportGuide(){
   const sys=(org.systemen||[]).filter(x=>!/anders/.test(x));
-  return'<details class="howto"><summary>Exporteren uit jullie systemen</summary>'+(sys.length?sys.map(x=>'<p class="small"><b>'+esc(x)+'.</b> Er is nog geen stap-voor-stap uitleg voor '+esc(x)+' in de bibliotheek. Vraag de leverancier of het applicatiebeheer om een export van de inzagelogging (NEN 7513) met de kolommen hierboven. Lukt dat niet in dit formaat, lever dan aan wat er is. AccessGuard vertaalt het. Zodra een organisatie met '+esc(x)+' een koppeling heeft goedgekeurd, komt de uitleg hier te staan.</p>').join(''):'<p class="small">Geef bij Inrichting aan welke systemen jullie gebruiken. Dan zie je hier de uitleg per systeem zodra die beschikbaar is.</p>')+'</details>';
+  const KNOWN={Epic:'Wat openbaar bekend is: zorgcontacten staan in de Clarity-tabellen PAT_ENC en PAT_ENC_HSP (onder meer CONTACT_DATE, de afdeling, HOSP_ADMSN_TIME en HOSP_DISCH_TIME). Die passen op zorgcontacten.csv. De inzagelog staat in Clarity (ACCESS_LOG); de kolommen daarvan zijn niet openbaar. Vraag jullie Clarity-team om een export met de kolommen hierboven.'};
+  return'<details class="howto"><summary>Exporteren uit jullie systemen</summary>'+(sys.length?sys.map(x=>KNOWN[x]?'<p class="small"><b>'+esc(x)+'.</b> '+esc(KNOWN[x])+'</p>':'<p class="small"><b>'+esc(x)+'.</b> Er is nog geen stap-voor-stap uitleg voor '+esc(x)+' in de bibliotheek. Vraag de leverancier of het applicatiebeheer om een export van de inzagelogging (NEN 7513) met de kolommen hierboven. Lukt dat niet in dit formaat, lever dan aan wat er is. AccessGuard vertaalt het. Zodra een organisatie met '+esc(x)+' een koppeling heeft goedgekeurd, komt de uitleg hier te staan.</p>').join(''):'<p class="small">Geef bij Inrichting aan welke systemen jullie gebruiken. Dan zie je hier de uitleg per systeem zodra die beschikbaar is.</p>')+'</details>';
 }
 function fbPanel(){
   const fb=org.poc.fb,m=fbMail();
