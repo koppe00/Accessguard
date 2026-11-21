@@ -1,6 +1,7 @@
 name: Lokaal taalmodel ophalen
 
-# Haalt de gewichten van Qwen2.5-0.5B-Instruct (4-bit, MLC-formaat, Apache 2.0)
+# Haalt de gewichten van Qwen2.5-0.5B-Instruct (4-bit, f32-variant voor brede
+# ondersteuning zonder shader-f16; MLC-formaat, Apache 2.0)
 # op bij Hugging Face en zet ze in deze repo onder app/model/qwen05/resolve/main/.
 # Daarna serveert GitHub Pages het model vanaf het eigen adres; de app hoeft
 # dan nooit verbinding te maken met een andere partij.
@@ -21,10 +22,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Model downloaden
         env:
-          REPO_ID: mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC
+          REPO_ID: mlc-ai/Qwen2.5-0.5B-Instruct-q4f32_1-MLC
           DOEL: app/model/qwen05/resolve/main
         run: |
           set -euo pipefail
+          rm -rf app/model/qwen05
           mkdir -p "$DOEL"
           SHA=$(curl -sfL "https://huggingface.co/api/models/$REPO_ID" | python3 -c 'import json,sys;print(json.load(sys.stdin)["sha"])')
           echo "Versie: $SHA"

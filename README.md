@@ -24,10 +24,10 @@ Klinq is een handelsnaam van Koppelaar Informatieadvies (KvK 95233784). AccessGu
 
 ## Lokaal taalmodel
 
-De koppel-assistent gebruikt vaste regels en kan bij twijfel een klein taalmodel raadplegen dat in de browser draait (WebLLM, WebGPU).
+De koppel-assistent gebruikt vaste regels en kan bij twijfel een klein taalmodel raadplegen dat in de browser draait (WebLLM, WebGPU). Gebruikt de f32-variant, zodat geen shader-f16 nodig is.
 
 - Bibliotheek: `app/lib/web-llm.js` (@mlc-ai/web-llm 0.2.84, Apache 2.0)
 - Modelcode: `app/model/lib/qwen05-webgpu.wasm`
-- Gewichten: Qwen2.5-0.5B-Instruct, 4-bit (Apache 2.0), ca. 280 MB in `app/model/qwen05/resolve/main/`. Die worden opgehaald door de workflow **Lokaal taalmodel ophalen** (`.github/workflows/model.yml`); start die eenmalig onder Actions als hij niet vanzelf is gedraaid.
+- Gewichten: Qwen2.5-0.5B-Instruct, 4-bit, f32-variant (Apache 2.0), ca. 280–300 MB in `app/model/qwen05/resolve/main/`. Die worden opgehaald door de workflow **Lokaal taalmodel ophalen** (`.github/workflows/model.yml`); start die eenmalig onder Actions als hij niet vanzelf is gedraaid.
 
 Het model krijgt alleen codes en afdelingsnamen, nooit regels uit de bestanden. Zonder WebGPU of zonder model werkt alles met de vaste regels.
