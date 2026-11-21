@@ -200,7 +200,7 @@ page("hoe-het-werkt/", "Hoe AccessGuard dossierinzage controleert · Klinq",
 {cta("../")}''', active="hoe-het-werkt/", ld=[APP], crumbs=[("Hoe het werkt","hoe-het-werkt/")])
 
 # ---------------- VEILIGHEID ----------------
-TR = [("Slotbout (Content Security Policy)","ok","De applicatie verbiedt de browser elke verbinding naar buiten (connect-src 'none'). Zichtbaar in de broncode en getest in de app zelf."),("Gegevensstroom en architectuur","ok","Verwerking in de browser; geen server voor jullie data."),
+TR = [("Slotbout (Content Security Policy)","ok","De applicatie verbiedt de browser elke verbinding naar andere partijen (connect-src 'self'). Alleen het eigen adres is bereikbaar, om het lokale taalmodel op te halen. Zichtbaar in de broncode en getest in de app zelf."),("Lokaal taalmodel","ok","Een klein taalmodel (Qwen2.5-0.5B) draait in de browser en helpt bij twijfelgevallen. Het staat op het eigen adres; er gaat niets naar een AI-leverancier."),("Gegevensstroom en architectuur","ok","Verwerking in de browser; geen server voor jullie data."),
  ("Netwerkgedrag","ok","Na het laden geen verbindingen nodig. Zelf te testen met de offline-test."),
  ("Versleuteling","ok","AES-256-GCM; sleutel via PBKDF2 (200.000 rondes); codes via HMAC-SHA-256; sleutels niet uitleesbaar."),
  ("Externe onderdelen","ok","Eén bestand, geen externe bibliotheken of lettertypen in de applicatie."),
