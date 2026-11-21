@@ -1,16 +1,21 @@
-# AccessGuard
+# Klinq · AccessGuard
 
-Prototype voor de controle op dossierinzage en toegangsrechten volgens NEN 7513, in de applicatie AccessGuard.
+**Toezicht op dossierinzage voor zorgorganisaties.**
 
-**Demo:** https://koppe00.github.io/Accessguard/
+AccessGuard controleert alle inzages in het EPD of ECD volgens NEN 7513, niet een steekproef. Alle verwerking gebeurt in de browser van de gebruiker; gegevens van patiënten en medewerkers gaan niet naar de leverancier.
 
-## Wat het is
-- Eén HTML-bestand. Alle verwerking gebeurt in de browser; de pagina laadt geen bestanden van andere websites.
-- Controles op inzage zonder zorgcontact, eigen dossier, collega, familie, noodtoegang, opvallend veel dossiers, inzage na uit dienst en toegangsrechten.
-- Risicoscore, beoordelen en afhandelen, rapport, en een uitleg over de veilige verwerking.
-- Inloggen via een organisatieaccount, de mail aan de IT-beheerder en de betaling zijn **nagebootst**.
+- Website: https://koppe00.github.io/Accessguard/
+- Applicatie: https://koppe00.github.io/Accessguard/app/
 
-## Let op
-- Alle gegevens zijn verzonnen. Niet bedoeld voor echte patiënt- of medewerkergegevens.
-- Buiten claude.ai werken de AI-assistent en de opslag niet. Gebruik bij "Bron koppelen" de knop "Gebruik een bestaande koppeling" met het eerste oefenbestand.
-- Demo-account: klik op "Bekijk het demo-account".
+## Opbouw
+
+| Pad | Inhoud |
+|---|---|
+| `/` en submappen | Marketingsite (statische HTML, geïndexeerd) |
+| `/app/` | De applicatie AccessGuard (één bestand, `noindex`) |
+| `/assets/` | Stijl, lettertypen (IBM Plex, OFL) en logo |
+| `sitemap.xml`, `robots.txt` | Voor zoekmachines; `/app/` staat uitgesloten |
+
+Bij een eigen domein: pas `BASE` aan in het buildscript en in `sitemap.xml`, `robots.txt` en de canonical-links.
+
+Klinq is een handelsnaam van Koppelaar Informatieadvies (KvK 95233784). AccessGuard is in de pilotfase.

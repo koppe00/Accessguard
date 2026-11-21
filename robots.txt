@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Sitemap: https://koppe00.github.io/Accessguard/sitemap.xml
