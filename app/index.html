@@ -1849,10 +1849,14 @@ const AGENT_TOOLS=[
 /* ---------- Lokaal taalmodel (WebLLM, draait in deze browser) ---------- */
 const LLM={engine:null,state:'uit',pct:0,text:'',err:null,model:'Qwen2.5-0.5B-Instruct (4-bit)'};
 const llmHosted=()=>/\/app\/?(index\.html)?$/.test(location.pathname);
-const llmGpu=()=>!!(navigator&&navigator.gpu);
+const llmGpu=()=>!!(navigator&&navigator.gpu)&&LLM.adapter!==false;
+const llmTouch=()=>/iPad|iPhone|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent));
+async function llmCheckGpu(){if(LLM.adapter!==undefined)return LLM.adapter;try{const a=navigator.gpu?await navigator.gpu.requestAdapter():null;LLM.adapter=!!a;LLM.f16=!!(a&&a.features&&a.features.has('shader-f16'))}catch(_){LLM.adapter=false}renderLlm();return LLM.adapter}
 function llmBoxHtml(){
   if(!llmHosted())return'<p class="small muted"><b>Lokaal taalmodel:</b> niet beschikbaar in deze weergave. In de zelfstandige versie kun je een klein taalmodel laden dat op je eigen computer draait.</p>';
-  if(!llmGpu())return'<p class="small muted"><b>Lokaal taalmodel:</b> deze browser of werkplek ondersteunt geen WebGPU. De koppeling werkt met vaste regels.</p>';
+  if(LLM.adapter===undefined&&navigator.gpu){llmCheckGpu();return'<p class="small muted"><b>Lokaal taalmodel:</b> controleren of deze computer het kan draaien…</p>'}
+  if(!llmGpu())return'<p class="small muted"><b>Lokaal taalmodel:</b> niet beschikbaar op deze computer. Het model heeft een grafische kaart nodig die de browser via WebGPU kan gebruiken, en die is hier niet gevonden. Dat komt vaak voor op Chromebooks, tablets en werkplekken via Citrix of VDI. De koppeling werkt gewoon met vaste regels.</p>';
+  if(llmTouch()&&LLM.state!=='klaar'&&LLM.state!=='laden')return'<p class="small muted"><b>Lokaal taalmodel:</b> werkt het best op een laptop of pc. Op een tablet of telefoon is er vaak te weinig geheugen of opslag. <button class="linkbtn" type="button" id="btnLlm">Toch proberen</button></p>';
   if(LLM.state==='klaar')return'<p class="small ok-text"><b>Lokaal taalmodel geladen:</b> '+esc(LLM.model)+'. Het draait op deze computer en helpt bij twijfelgevallen. Er gaat niets naar buiten.</p>';
   if(LLM.state==='laden')return'<p class="small"><b>Lokaal taalmodel laden…</b> '+Math.round(LLM.pct*100)+'%</p><div class="bar" style="height:6px"><i style="width:'+Math.round(LLM.pct*100)+'%;background:var(--ok)"></i></div><p class="small muted">'+esc(LLM.text||'')+'</p>';
   return'<div class="row"><button class="btn" type="button" id="btnLlm">Lokaal taalmodel laden</button><span class="small muted">Eenmalig ongeveer 290 MB, van het eigen adres van AccessGuard. Daarna bewaart de browser het model. Het helpt de vaste regels bij twijfel over codes en afdelingsnamen.'+(LLM.err?' <span class="err">Laden lukte niet: '+esc(LLM.err)+'</span>':'')+'</span></div>';
@@ -1867,7 +1871,7 @@ async function llmLoad(){
     const appConfig={model_list:[{model:base+'qwen05/',model_id:'qwen05',model_lib:base+'lib/qwen05-webgpu.wasm',low_resource_required:true,overrides:{context_window_size:4096}}]};
     LLM.engine=await webllm.CreateMLCEngine('qwen05',{appConfig,initProgressCallback:p=>{LLM.pct=p.progress||0;LLM.text=p.text||'';renderLlm()}});
     LLM.state='klaar';log('Lokaal taalmodel geladen',LLM.model);
-  }catch(e){LLM.state='uit';const m=String(e&&e.message||e);LLM.err=/Request failed|404|Failed to fetch|NetworkError/i.test(m)?'het model staat nog niet op de server of kon niet worden opgehaald ('+m.slice(0,80)+')':m.slice(0,160);log('Lokaal taalmodel niet geladen',LLM.err)}
+  }catch(e){LLM.state='uit';const m=String(e&&e.message||e);if(/compatible GPU|requestAdapter|WebGPU/i.test(m))LLM.adapter=false;LLM.err=/Cache\.add|quota/i.test(m)?'de browser kon het model niet bewaren, waarschijnlijk door te weinig opslagruimte':/Request failed|404|Failed to fetch|NetworkError/i.test(m)?'het model staat nog niet op de server of kon niet worden opgehaald ('+m.slice(0,80)+')':m.slice(0,160);log('Lokaal taalmodel niet geladen',LLM.err)}
   renderLlm();
 }
 async function llmJSON(system,user,schema){
