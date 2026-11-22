@@ -289,6 +289,7 @@ fieldset.prep legend{padding:0 4px}
     <button data-view="abonnement">Abonnement</button>
     <button data-view="inrichting">Inrichting</button>
     <button data-view="veiligheid">Veiligheid</button>
+    <button data-view="meldingen" id="navMeld" hidden>Meldingen</button>
   </nav>
 
   <section id="v-team" hidden style="display:flex;flex-direction:column;gap:14px">
@@ -340,6 +341,7 @@ fieldset.prep legend{padding:0 4px}
       </div>
       <div id="llmBox"></div>
       <div id="aiPreview"></div>
+      <div id="reportBox"></div>
       <ol class="feed" id="feed"></ol>
       <form novalidate class="askbox" id="askBox" hidden></form>
       <div class="agenttext" id="agentText" hidden></div>
@@ -495,6 +497,10 @@ fieldset.prep legend{padding:0 4px}
     </div>
   </section>
 
+  <section id="v-meldingen" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="prose"><h2>Binnengekomen structuurmeldingen</h2><p>Alleen zichtbaar voor Klinq (de eigenaar). Elke melding beschrijft de opbouw van bronbestanden en de waarschijnlijke indeling, zonder gegevens. Gebruik ze om koppelingen en regels te verbeteren.</p></div>
+    <div id="meldBox"></div>
+  </section>
   <section id="v-veiligheid" hidden style="display:flex;flex-direction:column;gap:18px">
     <div class="prose">
       <h2>Hoe AccessGuard de gegevens beschermt</h2>
@@ -1023,6 +1029,33 @@ function autoRecipe(){
   const map={};
   RA.forEach(r=>{if(EA.includes(r))return;let bestE=null,bs=0;const rt=tok(r);EA.forEach(e=>{const et=tok(e);let sc=0;rt.forEach(a=>{if(et.some(b=>b.startsWith(a)||a.startsWith(b)))sc++});if(r.length<=4&&e.toLowerCase().startsWith(r.toLowerCase()))sc+=2;if(sc>bs){bs=sc;bestE=e}});if(bestE&&bs>0)map[r]=bestE});
   if(Object.keys(map).length)steps.push('Afdelingsnamen vertaald: '+Object.entries(map).slice(0,8).map(([a,b])=>a+' → '+b).join(', ')+(Object.keys(map).length>8?' …':'')+'.');
+  /* gedragslaag: bewijs uit de data zelf */
+  const bewijs=[];
+  {
+    const uA={};E.t.rows.forEach(r=>{const k=String(r[ek]||'').trim();if(k)uA[k]=String(r[useEmpAfd]||'').trim()});
+    const pc={};if(ra>=0)Rl.t.rows.forEach(r=>{const pk=String(r[rp]||'').trim();if(!pk)return;(pc[pk]??=new Set()).add(String(r[ra]||'').trim())});
+    const open=RA.filter(r=>!EA.includes(r)&&!map[r]);
+    if(open.length){
+      const co={},tot={};let N=0;const lim=Math.min(logT.t.rows.length,300000);
+      for(let q=0;q<lim;q++){const row=logT.t.rows[q];const a=uA[String(row[empKey.i]||'').trim()];if(!a)continue;tot[a]=(tot[a]||0)+1;N++;const cs=pc[String(row[relKey.i]||'').trim()];if(!cs||cs.size!==1)continue;const c=[...cs][0];if(!open.includes(c))continue;(co[c]??={})[a]=(co[c][a]||0)+1}
+      open.forEach(c=>{const d=co[c]||{},n=Object.values(d).reduce((x,y)=>x+y,0);if(n<30){bewijs.push({soort:'afdeling',bron:c,n,zeker:false,uitleg:'te weinig inzages om te beoordelen'});return}
+        const best=Object.entries(d).map(([a,k])=>({a,share:k/n,lift:(k/n)/((tot[a]||1)/N)})).sort((x,y)=>y.lift*y.share-x.lift*x.share)[0];
+        const zeker=best.share>=.4&&best.lift>=2;bewijs.push({soort:'afdeling',bron:c,doel:best.a,aandeel:Math.round(best.share*100),lift:Math.round(best.lift*10)/10,n,zeker});
+        if(zeker){map[c]=best.a;steps.push('Afdeling herkend uit gedrag: '+c+' → '+best.a+' ('+Math.round(best.share*100)+'% van de inzages door '+best.a+', '+String(Math.round(best.lift*10)/10).replace('.',',')+'× vaker dan gemiddeld).')}
+        else steps.push('Afdeling niet zeker: '+c+' (hoogste aandeel '+Math.round(best.share*100)+'% door '+best.a+'). Wordt voorgelegd.')})
+    }
+    if(actOnzeker.length&&ai!=null){
+      const f={},hr=v=>{const t=parseFmt(v,fmtOf(logT.t,ti));return t==null?null:new Date(t).getUTCHours()};const exS=new Set(excl);
+      const lim=Math.min(logT.t.rows.length,300000);
+      for(let q=0;q<lim;q++){const row=logT.t.rows[q];const a=String(row[ai]||'').trim();if(!actOnzeker.includes(a))continue;const x=f[a]??={n:0,reden:0,nacht:0,sys:0};x.n++;if(ri>=0&&String(row[ri]||'').trim())x.reden++;const h=hr(row[ti]);if(h!=null&&h<6)x.nacht++;const u=String(row[empKey.i]||'').trim();if(exS.has(u)||!empIds.has(u))x.sys++}
+      const total=logT.t.rows.length;
+      Object.entries(f).forEach(([a,x])=>{const aand=x.n/total,red=x.reden/x.n,nacht=x.nacht/x.n,sy=x.sys/x.n;let soort=null;
+        if(red>=.5&&aand<.05)soort='noodtoegang';else if(nacht>=.9||sy>=.9)soort='negeer';
+        bewijs.push({soort:'handeling',code:a,n:x.n,aandeel:Math.round(aand*1000)/10,met_reden:Math.round(red*100),nacht:Math.round(nacht*100),geen_persoon:Math.round(sy*100),conclusie:soort||'inzage',zeker:!!soort});
+        if(soort){const k=ins.indexOf(a);if(k>=0)ins.splice(k,1);(soort==='noodtoegang'?btg:neg).push(a);steps.push('Handeling herkend uit gedrag: '+a+' → '+(soort==='noodtoegang'?'noodtoegang ('+Math.round(red*100)+'% met reden, zelden gebruikt)':'automatisch ('+(nacht>=.9?Math.round(nacht*100)+'% \'s nachts':Math.round(sy*100)+'% zonder persoon')+')')+'.')}})
+    }
+  }
+  const actRest=actOnzeker.filter(a=>ins.includes(a)&&!bewijs.some(b=>b.code===a&&b.zeker));
   const afdOnzeker=RA.filter(r=>!EA.includes(r)&&!map[r]);
   const covered=new Set(RA.map(r=>map[r]||r));let breed=EA.filter(e=>!covered.has(e)&&!/interface|it /i.test(e));
   if(afdOnzeker.length){const BROAD=/radiolog|apothe|pharma|spoed|emergenc|seh|laborat|anesthes/i;const weg=breed.filter(e=>!BROAD.test(e));breed=breed.filter(e=>BROAD.test(e));if(weg.length)steps.push('Niet automatisch op "mag alles zien" gezet, omdat niet alle afdelingsnamen te vertalen waren: '+weg.join(', ')+'.')}
@@ -1034,8 +1067,40 @@ function autoRecipe(){
     rechten:null,afdeling_mapping:map,breed_afdelingen:breed};
   if(empty&&an>=0&&vl>=0)steps.push('Een deel van de medewerkers heeft geen inlognaam; die wordt afgeleid uit achternaam en voorletter.');
   if(rdt>=0&&filledEnd===0)steps.push('Verblijf zonder einddatum telt als lopend.');
-  if(actOnzeker.length||afdOnzeker.length)steps.push('Twijfelgevallen: '+(actOnzeker.length?actOnzeker.length+' soort(en) handeling ('+actOnzeker.slice(0,5).join(', ')+')':'')+(actOnzeker.length&&afdOnzeker.length?' en ':'')+(afdOnzeker.length?afdOnzeker.length+' afdelingsnaam/-namen ('+afdOnzeker.slice(0,5).join(', ')+')':'')+'.');
-  return{recept,stappen:steps,twijfel:{acties:actOnzeker,afdelingen:afdOnzeker,doelafdelingen:EA}};
+  if(actRest.length||afdOnzeker.length)steps.push('Twijfelgevallen: '+(actRest.length?actRest.length+' soort(en) handeling ('+actRest.slice(0,5).join(', ')+')':'')+(actRest.length&&afdOnzeker.length?' en ':'')+(afdOnzeker.length?afdOnzeker.length+' afdelingsnaam/-namen ('+afdOnzeker.slice(0,5).join(', ')+')':'')+'.');
+  return{recept,stappen:steps,bewijs,twijfel:{acties:actRest,afdelingen:afdOnzeker,doelafdelingen:EA}};
+}
+
+/* ---------- Structuurmelding: opbouw en waarschijnlijke indeling, zonder gegevens ---------- */
+function structReport(o){
+  o=o||{};const sv=survey();const files=Object.keys(SRC);
+  const nm={};files.forEach((n,i)=>nm[n]=o.namen?n:'bestand_'+(i+1)+((n.match(/\.\w{2,4}$/)||['.csv'])[0]));
+  const bk=n=>n<10?'minder dan 10':n<100?'10 tot 100':n<1000?'100 tot 1.000':n<10000?'1.000 tot 10.000':n<100000?'10.000 tot 100.000':'meer dan 100.000';
+  const tabellen=sv.tabellen.map(t=>({tabel:nm[t.tabel],regels:bk(t.regels),kolommen:t.kolommen.map(c=>{const x={kolom:c.kolom,soort:c.soort,gevuld_pct:c.gevuld_pct,verschillend:bk(c.uniek),vorm:[...new Set((c.vorm||[]).map(v=>{v=v.replace(/\s*\(\d+%\)$/,'');const alt=(v.match(/(?<=9)[aA]|(?<=[aA])9/g)||[]).length;return alt>3?v.length+' tekens, letters en cijfers gemengd':v}))].slice(0,2)};if(o.codes&&c.waarden)x.waarden=Object.keys(c.waarden).slice(0,40);else if(c.waarden)x.waarden='keuzelijst met '+Object.keys(c.waarden).length+' waarden (niet meegestuurd)';return x})}));
+  let ind=null,fout=null,poorten=null;
+  try{const a=autoRecipe(),rc=a.recept;
+    const rol=(x,keys)=>{const out={tabel:nm[x.tabel]||x.tabel};keys.forEach(k=>{if(x[k]!=null&&typeof x[k]==='string')out[k]=x[k]});return out};
+    ind={inzagelog:rol(rc.inzagelog,['tijdstip','tijdformaat','gebruiker','patient','actie','reden']),medewerkers:rol(rc.medewerkers,['koppelsleutel','naam','afdeling','functie','uit_dienst','actief']),zorgcontacten:rol(rc.relaties,['patient','afdeling','datum','datum_tot','datumformaat','lege_einddatum','soort']),
+      handelingen:o.codes?{inzage:rc.inzagelog.inzage_acties,noodtoegang:rc.inzagelog.btg_acties,niet_meetellen:rc.inzagelog.negeer_acties}:{inzage:rc.inzagelog.inzage_acties.length,noodtoegang:rc.inzagelog.btg_acties.length,niet_meetellen:rc.inzagelog.negeer_acties.length},
+      systeemaccounts:rc.inzagelog.uitsluiten_accounts.length,afdelingen_vertaald:Object.keys(rc.afdeling_mapping||{}).length,mag_alles_zien:o.codes?rc.breed_afdelingen:(rc.breed_afdelingen||[]).length,
+      bewijs:(a.bewijs||[]).map(b=>o.codes?b:Object.fromEntries(Object.entries(b).filter(([k])=>!['bron','doel','code'].includes(k)))),
+      twijfel:{handelingen:o.codes?a.twijfel.acties:a.twijfel.acties.length,afdelingen:o.codes?a.twijfel.afdelingen:a.twijfel.afdelingen.length},
+      stappen:a.stappen.length};
+    try{const r=dryRun(rc);poorten=r.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm}))}catch(_){}
+  }catch(e){fout=e.message}
+  return{soort:'AccessGuard structuurmelding',versie:'1.0',specificatie:o.spec||null,aangemaakt:new Date().toISOString().slice(0,10),
+    bestanden:tabellen.length,tabellen,waarschijnlijke_indeling:ind,koppelen_lukte_niet:fout,kwaliteit:poorten,
+    instellingen:{codelijsten_mee:!!o.codes,bestandsnamen_mee:!!o.namen}};
+}
+function reportLeak(text,allow){
+  const safe=new Set();try{survey().tabellen.forEach(t=>t.kolommen.forEach(c=>{if(c.waarden)safe.add(t.tabel+'|'+c.kolom)}))}catch(_){}
+  const al=new Set((allow||[]).map(x=>String(x).toLowerCase()));const low=String(text).toLowerCase();
+  const tok=new Set(low.split(/[^\p{L}\p{N}_@.\-]+/u).filter(Boolean));const hits=[];let checked=0;
+  for(const [name,t] of Object.entries(SRC)){t.headers.forEach((h,ix)=>{if(safe.has(name+'|'+h))return;const seen=new Set();let found=0;
+    for(const r of t.rows){const v=String(r[ix]||'').trim().toLowerCase();if(v.length<4||seen.has(v))continue;seen.add(v);if(seen.size>20000)break;if(al.has(v))continue;if(/^\d{1,4}([.,]\d+)?$/.test(v))continue;checked++;
+      if(v.includes(' ')?low.includes(v):tok.has(v)){found++;if(found>=1)break}}
+    if(found)hits.push(name+' › '+h)})}
+  return{gecontroleerd:checked,treffers:hits};
 }
 function libMatch(){
   const cur=new Set(libFingerprint(SRC));let best=null;
@@ -1250,6 +1315,8 @@ self.onmessage=e=>{
     else if(type==='leak'){res=leakCheck(p.text,p.allow)}
     else if(type==='lib'){res=libMatch()}
     else if(type==='auto'){res=autoRecipe()}
+    else if(type==='report'){res=structReport(p)}
+    else if(type==='rleak'){res=reportLeak(p.text,p.allow)}
     self.postMessage({rid,ok:true,res});
   }catch(err){self.postMessage({rid,ok:false,error:String(err&&err.message||err)})}
 };
@@ -1780,7 +1847,7 @@ function aiPreviewHtml(sv){
     rows+'<p class="small muted">Dit is precies de beschrijving die de assistent krijgt. De volledige tekst zie je onder "Wat kreeg de assistent te zien?".</p></div>';
 }
 document.addEventListener('click',e=>{if(e.target&&e.target.id==='btnLlm')llmLoad()});
-async function renderAiPreview(){renderLlm();try{const sv=await call('survey');asst.preview=sv;$('#aiPreview').innerHTML=aiPreviewHtml(sv)}catch(_){$('#aiPreview').innerHTML=''}}
+async function renderAiPreview(){renderLlm();REP.open=false;REP.draft=null;setTimeout(renderReportBox,0);try{const sv=await call('survey');asst.preview=sv;$('#aiPreview').innerHTML=aiPreviewHtml(sv)}catch(_){$('#aiPreview').innerHTML=''}}
 function renderOverview(ov){
   $('#srcOverview').innerHTML=trailHtml('bron')+'<div class="srcov">'+ov.tabellen.map(t=>'<div><b>'+esc(t.tabel)+'</b> · '+nf(t.regels)+' regels<br><span class="muted">'+esc(t.kolommen.join(' · '))+'</span></div>').join('')+'</div>';
 }
@@ -1929,10 +1996,10 @@ async function simulateAgent(){
     }
     asst.final={rc,r};asst.last=r;asst.lastRecept=rc;
     $('#agentText').hidden=false;$('#agentText').textContent='Ik heb de inzagelog, de medewerkers en de zorgcontacten aan elkaar gekoppeld via gedeelde codes. Soorten handelingen en afdelingsnamen zijn vertaald en systeemaccounts zijn uitgesloten. '+(r.klaar?'Alle kwaliteitseisen zijn gehaald.':'Nog niet alle kwaliteitseisen zijn gehaald; bekijk de test hieronder.')+' Controleer de koppeling en keur hem goed. ('+(LLM.state==='klaar'?'Gedaan met vaste regels en een lokaal taalmodel op deze computer.':'Demo: gedaan met vaste regels, niet met AI.')+')';
-    renderPaspoort(r,rc,{bron:'demo-assistent',final:true});
+    asst.lastTwijfel=a.twijfel;renderPaspoort(r,rc,{bron:'demo-assistent',final:true});renderReportBox();
     $('#agentState').textContent='Klaar. Bekijk de kwaliteitscheck en keur de koppeling goed.';
     log('Demo-assistent klaar',gateLine(r));
-  }catch(e){$('#agentState').textContent='De demo-assistent kon geen koppeling maken: '+e.message;feedItem('q','Geen koppeling',e.message)}
+  }catch(e){$('#agentState').textContent='De demo-assistent kon geen koppeling maken: '+e.message;feedItem('q','Geen koppeling',e.message);REP.open=true;renderReportBox()}
   finally{asst.running=false;$('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#btnDemoAgent').disabled=false}
 }
 async function runAgent(){
@@ -2018,6 +2085,7 @@ async function initPlatform(){
     if(!window.claude||!window.claude.use)return;
     const [d,u]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
     if(u){userCap=u;myId=await u.id();try{const me=await u.me();gate.prefillName=me&&me.name||''}catch(_){}}
+    setTimeout(meldOwnerCheck,0);
     if(d&&myId){db=d;platformPath='data/users/'+myId+'/platform';const snap=await db.doc(platformPath).get();if(snap.exists){const v=snap.data();ORGS=JSON.parse(JSON.stringify(v.orgs||{}))}}
   }catch(_){}
   if(gate.view==='login')renderGate();
@@ -2307,6 +2375,95 @@ const SPEC={versie:'1.1',bestanden:[
     {code:'noodtoegang',fhir:'R + purposeOfEvent ETREAT',b1:'Een dossier openen met noodtoegang',syn:['btg','break-the-glass access','break the glass','break-the-glass','nood']},
     {code:'automatisch',fhir:'niet als inzage geteld',b1:'Iets dat het systeem zelf deed, zonder mens',syn:['background prefetch','sessie.vernieuwd','prefetch','systeem','auto']}]};
 
+
+/* ================= Structuurmelding insturen (zonder gegevens) ================= */
+const REP={open:false,draft:null,leak:null,busy:false,msg:'',sentId:null};
+const repKeys=(o,out=new Set())=>{if(o&&typeof o==='object'){for(const [k,v] of Object.entries(o)){out.add(k);repKeys(v,out)}}else if(typeof o==='string'&&o.length<40)out.add(o);return out};
+function repWeak(){const f=asst.final;return !f||!f.r||!f.r.klaar||(asst.lastTwijfel&&(asst.lastTwijfel.acties.length||asst.lastTwijfel.afdelingen.length))}
+function renderReportBox(){
+  const el=document.getElementById('reportBox');if(!el)return;
+  if(!asst.overview){el.innerHTML='';return}
+  const sysOpts=['','HiX','Epic','Nedap Ons','Ysis','SDB','Pluriform','AFAS','Youforce','Anders'].map(x=>'<option'+(x===(REP.sys||'')?' selected':'')+'>'+esc(x)+'</option>').join('');
+  let h='<div class="trail"><b class="small">Opbouw ter beoordeling insturen</b><span class="small">'+(repWeak()?'Lukt het koppelen niet helemaal? ':'')+'Stuur de opbouw van je bestanden naar Klinq. Wij bekijken hem en verbeteren de koppelingen voor iedereen met dit systeem. <b>Er gaan geen gegevens mee</b>: alleen kolomnamen, soorten, vormen en de indeling die AccessGuard denkt te zien. Je ziet vooraf precies wat er wordt verstuurd.</span>';
+  if(!REP.open){h+='<div class="row"><button class="btn'+(repWeak()?' primary':'')+'" type="button" data-rep="open">Opbouw insturen</button></div></div>';el.innerHTML=h;return}
+  h+='<div class="params"><label for="repSys">Systeem waar de bestanden uit komen<select id="repSys" class="inp">'+sysOpts+'</select></label><label for="repMail">Contact voor vragen (niet verplicht)<input id="repMail" class="inp" type="email" value="'+esc(REP.mail!=null?REP.mail:(session&&session.email)||'')+'"></label></div>'+
+    '<label class="small" for="repNote">Toelichting (niet verplicht). Zet hier geen namen of nummers van patiënten of medewerkers in.</label><textarea id="repNote" class="inp" rows="3">'+esc(REP.note||'')+'</textarea>'+
+    '<label class="row small" style="gap:6px" for="repCodes"><input type="checkbox" id="repCodes"'+(REP.codes?' checked':'')+'>Codelijsten meesturen: soorten handelingen en afdelingsnamen. Die zijn niet persoonlijk, maar wel eigen aan jullie organisatie.</label>'+
+    '<label class="row small" style="gap:6px" for="repNames"><input type="checkbox" id="repNames"'+(REP.names?' checked':'')+'>Bestandsnamen meesturen (anders: bestand_1, bestand_2…)</label>'+
+    '<div class="row"><button class="btn" type="button" data-rep="make">'+(REP.draft?'Melding opnieuw maken':'Melding maken')+'</button><button class="linkbtn small" type="button" data-rep="close">Annuleren</button><span class="busy">'+esc(REP.msg)+'</span></div>';
+  if(REP.draft){
+    const d=REP.draft,m=d.melding,ind=m.waarschijnlijke_indeling,ok=(m.kwaliteit||[]).filter(g=>g.ok).length,nk=m.tabellen.reduce((a,t)=>a+t.kolommen.length,0);
+    h+='<h4>Wat er wordt verstuurd</h4><ul class="limits small"><li>'+m.bestanden+' bestanden met samen '+nk+' kolommen: naam, soort, hoe vol, hoeveel verschillend (in ruime klassen) en de vorm.</li>'+
+      '<li>'+(ind?'De waarschijnlijke indeling: welke kolom het tijdstip, de medewerker, de patiënt en de afdeling is'+(ind.bewijs.length?', met '+ind.bewijs.length+' beslissing(en) uit gedrag':'')+'.':'Koppelen lukte niet: '+esc(m.koppelen_lukte_niet||''))+'</li>'+
+      (m.kwaliteit?'<li>Uitkomst van de test: '+ok+' van de '+m.kwaliteit.length+' eisen gehaald (alleen percentages).</li>':'')+
+      '<li>'+(m.instellingen.codelijsten_mee?'Codelijsten: ja.':'Codelijsten: nee, alleen aantallen.')+' '+(m.instellingen.bestandsnamen_mee?'Bestandsnamen: ja.':'Bestandsnamen: nee.')+'</li>'+
+      (d.systeem?'<li>Systeem: '+esc(d.systeem)+'.</li>':'')+(d.toelichting?'<li>Je toelichting.</li>':'')+(d.contact?'<li>Je contactadres.</li>':'')+
+      '<li><b>Niet:</b> regels, patiënt- of cliëntnummers, namen, inlognamen, datums of vrije tekst uit de bestanden.</li></ul>';
+    const L=REP.leak;
+    h+=L?(L.treffers.length?'<p class="err small"><b>Controle: er staan waarden uit je bestanden in de melding</b> (kolom: '+esc(L.treffers.join(', '))+'). Versturen is geblokkeerd. Zet codelijsten of bestandsnamen uit, of pas de toelichting aan.</p>':'<p class="ok-text small">Controle: geen enkele waarde uit je bestanden staat in de melding ('+nf(L.gecontroleerd)+' waarden nagelopen).</p>'):'';
+    h+='<details class="howto"><summary>Bekijk de exacte inhoud</summary><pre class="seen">'+esc(JSON.stringify(d,null,1))+'</pre></details>';
+    const blocked=!L||L.treffers.length>0;
+    h+='<label class="row small" style="gap:6px" for="repOk1"><input type="checkbox" id="repOk1"'+(REP.ok1?' checked':'')+(blocked?' disabled':'')+'>Ik heb bekeken wat er wordt verstuurd</label>'+
+      '<label class="row small" style="gap:6px" for="repOk2"><input type="checkbox" id="repOk2"'+(REP.ok2?' checked':'')+(blocked?' disabled':'')+'>Ik mag dit namens mijn organisatie delen met Klinq</label>';
+    const can=!blocked&&REP.ok1&&REP.ok2;
+    h+=db?'<div class="row"><button class="btn primary" type="button" data-rep="send"'+(can?'':' disabled')+'>Verstuur naar Klinq</button></div>':
+      '<div class="row"><button class="btn primary" type="button" data-rep="download"'+(can?'':' disabled')+'>Download de melding</button><button class="btn" type="button" data-rep="copy"'+(can?'':' disabled')+'>Kopieer</button><span class="small muted">Stuur het bestand naar <span class="mono">info@klinq.nl</span>. Deze versie heeft geen verbinding met Klinq; daardoor gaat er ook niets vanzelf weg.</span></div>';
+    if(REP.sentId)h+='<p class="ok-text small">Verstuurd (melding '+esc(REP.sentId)+'). Klinq bekijkt de opbouw'+(d.contact?' en neemt contact op als er vragen zijn':'')+'.</p>';
+  }
+  el.innerHTML=h+'</div>';
+}
+async function repMake(){
+  REP.sys=$('#repSys').value;REP.mail=$('#repMail').value.trim();REP.note=$('#repNote').value.trim();REP.codes=$('#repCodes').checked;REP.names=$('#repNames').checked;
+  REP.msg='Melding maken…';REP.draft=null;REP.leak=null;REP.ok1=REP.ok2=false;REP.sentId=null;renderReportBox();
+  try{
+    const melding=await call('report',{codes:REP.codes,namen:REP.names,spec:typeof SPEC!=='undefined'?SPEC.versie:null});
+    const d={id:'M-'+Date.now().toString(36).toUpperCase(),organisatie:org?org.naam:'',systeem:REP.sys||null,toelichting:REP.note||null,contact:REP.mail||null,app:'AccessGuard',melding};
+    const allow=[...repKeys(melding)].concat(REP.mail?[REP.mail]:[]).concat(org?[org.naam,org.domein].filter(Boolean):[]);
+    REP.leak=await call('rleak',{text:JSON.stringify(d),allow:REP.codes||REP.names?allow:allow});
+    REP.draft=d;REP.msg='';log('Structuurmelding gemaakt',d.id+' · '+(REP.leak.treffers.length?'geblokkeerd: waarden gevonden':'geen waarden uit bestanden'));
+  }catch(e){REP.msg='Melding maken lukte niet: '+e.message}
+  renderReportBox();
+}
+async function repSend(){
+  const d=REP.draft;if(!d||!db||!myId)return;REP.msg='Versturen…';renderReportBox();
+  try{const ref=db.doc('meldingen/'+myId);const snap=await ref.get();const cur=snap.exists?(snap.data().items||[]):[];
+    cur.push({...d,ontvangen:Date.now(),status:'nieuw'});await ref.set({items:cur.slice(-25)});
+    REP.sentId=d.id;REP.msg='';log('Structuurmelding verstuurd naar Klinq',d.id);
+    if(org){(org.meldingen??=[]).push({id:d.id,ts:Date.now()});saveOrgs()}
+  }catch(e){REP.msg='Versturen lukte niet: '+e.message}
+  renderReportBox();
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-rep]');if(!b)return;const a=b.dataset.rep;
+  if(a==='open'){REP.open=true;renderReportBox()}
+  else if(a==='close'){REP.open=false;REP.draft=null;renderReportBox()}
+  else if(a==='make')await repMake();
+  else if(a==='send')await repSend();
+  else if(a==='copy'){try{await navigator.clipboard.writeText(JSON.stringify(REP.draft,null,1));REP.msg='Gekopieerd.'}catch(_){REP.msg='Kopiëren lukte niet.'}renderReportBox()}
+  else if(a==='download'){const blob=new Blob([JSON.stringify(REP.draft,null,1)],{type:'application/json'});const u=URL.createObjectURL(blob);const x=document.createElement('a');x.href=u;x.download='accessguard-structuurmelding-'+REP.draft.id+'.json';document.body.appendChild(x);x.click();x.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);log('Structuurmelding gedownload',REP.draft.id)}
+});
+document.addEventListener('change',e=>{const t=e.target;if(t.id==='repOk1'){REP.ok1=t.checked;renderReportBox()}else if(t.id==='repOk2'){REP.ok2=t.checked;renderReportBox()}});
+
+/* ---------- Back-end (eigenaar): binnengekomen meldingen ---------- */
+let MELD={items:null,sel:null,err:null};
+async function meldOwnerCheck(){try{if(!userCap||!db)return false;const own=await userCap.isOwner();document.getElementById('navMeld').hidden=!own;return own}catch(_){return false}}
+async function renderMeldingen(){
+  const box=$('#meldBox');if(!db){box.innerHTML='<p class="small muted">Geen verbinding met de opslag van Klinq in deze versie.</p>';return}
+  box.innerHTML='<p class="small muted">Laden…</p>';
+  try{const snap=await db.collection('meldingen').get();MELD.items=[];snap.docs.forEach(dc=>{(dc.data().items||[]).forEach((it,i)=>MELD.items.push({...it,_doc:dc.id,_i:i}))});MELD.items.sort((a,b)=>(b.ontvangen||0)-(a.ontvangen||0))}
+  catch(e){box.innerHTML='<p class="err small">Laden lukte niet: '+esc(e.message)+'</p>';return}
+  if(!MELD.items.length){box.innerHTML='<p class="small muted">Nog geen meldingen ontvangen.</p>';return}
+  const rows=MELD.items.map((m,k)=>{const q=m.melding.kwaliteit,ok=q?q.filter(g=>g.ok).length+'/'+q.length:'—',ind=m.melding.waarschijnlijke_indeling;
+    return'<tr data-meld="'+k+'" style="cursor:pointer"><td class="mono small">'+esc(m.id)+'</td><td>'+fmtD(m.ontvangen)+'</td><td>'+esc(m.organisatie||'')+'</td><td>'+esc(m.systeem||'onbekend')+'</td><td>'+m.melding.bestanden+'</td><td>'+(ind?ok:'<span class="err">koppelen lukte niet</span>')+'</td><td>'+(ind?(Array.isArray(ind.twijfel.handelingen)?ind.twijfel.handelingen.length:ind.twijfel.handelingen)+' / '+(Array.isArray(ind.twijfel.afdelingen)?ind.twijfel.afdelingen.length:ind.twijfel.afdelingen):'—')+'</td><td>'+esc(m.status||'nieuw')+'</td></tr>'}).join('');
+  let h='<div class="tablebox"><table><thead><tr><th>Melding</th><th>Ontvangen</th><th>Organisatie</th><th>Systeem</th><th>Bestanden</th><th>Kwaliteit</th><th>Twijfel (handelingen / afdelingen)</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  if(MELD.sel!=null&&MELD.items[MELD.sel]){const m=MELD.items[MELD.sel];
+    h+='<div class="card"><div class="head"><h3>Melding '+esc(m.id)+'</h3><span class="tag">'+esc(m.status||'nieuw')+'</span></div>'+(m.toelichting?'<p class="small"><b>Toelichting:</b> '+esc(m.toelichting)+'</p>':'')+(m.contact?'<p class="small"><b>Contact:</b> '+esc(m.contact)+'</p>':'')+
+      '<div class="row">'+['in behandeling','opgelost','geen actie'].map(st=>'<button class="btn" type="button" data-mstat="'+st+'">'+st+'</button>').join('')+'</div>'+
+      '<pre class="seen" style="max-height:420px">'+esc(JSON.stringify(m.melding,null,1))+'</pre></div>'}
+  box.innerHTML=h;
+}
+document.addEventListener('click',async e=>{const r=e.target.closest('[data-meld]');if(r){MELD.sel=+r.dataset.meld;renderMeldingen();return}
+  const s=e.target.closest('[data-mstat]');if(s&&MELD.sel!=null){const m=MELD.items[MELD.sel];try{const ref=db.doc('meldingen/'+m._doc);const snap=await ref.get();const it=snap.data().items||[];if(it[m._i]){it[m._i].status=s.dataset.mstat;await ref.set({items:it});log('Melding '+m.id,s.dataset.mstat)}}catch(err){}renderMeldingen()}});
 /* ================= Wat er met je bestanden gebeurt ================= */
 const TRAIL={files:[],kind:null,t0:null,at:null};
 function trailOpen(fl,kind){TRAIL.files=(fl||[]).map(f=>({name:f.name,size:f.size,mod:f.lastModified}));TRAIL.kind=kind;TRAIL.t0=performance.now();TRAIL.at=Date.now();log('Bestanden geopend op deze computer',TRAIL.files.length?TRAIL.files.length+' bestand(en), niet verstuurd':'oefenbestanden')}
@@ -2540,9 +2697,9 @@ async function pocHandoffStart(){
 async function pocRedry(){pocDry=await call('dry',{recept:pocRecept});org.poc.kwaliteit.poorten=pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm}));saveOrgs();renderPoc()}
 
 /* ---------- Navigatie en events ---------- */
-const VIEWS=['poc','signalen','assistent','rapport','inrichting','bronnen','controles','team','abonnement','sleutel','veiligheid'];
+const VIEWS=['meldingen','poc','signalen','assistent','rapport','inrichting','bronnen','controles','team','abonnement','sleutel','veiligheid'];
 function show(){let v=VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'signalen';
-  if(v==='team')renderTeam();if(v==='abonnement')renderBilling();if(v==='inrichting')renderSetup();if(v==='poc')renderPoc();
+  if(v==='team')renderTeam();if(v==='abonnement')renderBilling();if(v==='inrichting')renderSetup();if(v==='poc')renderPoc();if(v==='meldingen')renderMeldingen();
   currentView=v;VIEWS.forEach(x=>$('#v-'+x).hidden=x!==v);if(v==='veiligheid'){runSelfChecks();renderLog()}
   document.querySelectorAll('nav.steps button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===v?'page':'false'))}
 window.addEventListener('hashchange',show);

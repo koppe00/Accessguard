@@ -31,3 +31,7 @@ De koppel-assistent gebruikt vaste regels en kan bij twijfel een klein taalmodel
 - Gewichten: Qwen2.5-0.5B-Instruct, 4-bit, f32-variant (Apache 2.0), ca. 280–300 MB in `app/model/qwen05/resolve/main/`. Die worden opgehaald door de workflow **Lokaal taalmodel ophalen** (`.github/workflows/model.yml`); start die eenmalig onder Actions als hij niet vanzelf is gedraaid.
 
 Het model krijgt alleen codes en afdelingsnamen, nooit regels uit de bestanden. Zonder WebGPU of zonder model werkt alles met de vaste regels.
+
+## Structuurmelding
+
+Lukt het koppelen niet goed, dan kan de gebruiker onder Bron koppelen de opbouw van de bestanden insturen. De melding bevat kolomnamen, soorten, vulgraad, ruime klassen voor aantallen, vormen en de waarschijnlijke indeling met bewijs uit gedrag. Geen regels, nummers, namen of datums. Codelijsten en bestandsnamen alleen als de gebruiker dat aanzet. Voor versturen controleert de app of er waarden uit de bestanden in de melding staan; zo ja, dan is versturen geblokkeerd. In de Claude-versie komt de melding binnen in de eigen opslag (menu Meldingen, alleen voor de eigenaar). In de GitHub-versie is er geen verbinding: de gebruiker downloadt de melding en mailt die.
