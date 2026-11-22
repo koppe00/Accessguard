@@ -160,6 +160,8 @@ pre.seen{font:11.5px/1.5 var(--f-mono);white-space:pre-wrap;word-break:break-wor
 .ppgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
 .ppgrid h4{margin:0 0 6px;font:600 14px var(--f-display)}
 .kv{font-size:13px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px}
+@media (max-width:560px){.kv{grid-template-columns:1fr;gap:0}.kv span:nth-child(even){color:var(--muted);margin-bottom:8px;text-align:left!important}}
+.diagram-hint{display:none}@media (max-width:700px){.diagram-hint{display:block}}
 .kv span:nth-child(even){font-family:var(--f-mono);text-align:right}
 pre.recept{font:11.5px/1.5 var(--f-mono);white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:8px 0 0}
 footer{font-size:12.5px;color:var(--muted);max-width:80ch}
@@ -325,8 +327,8 @@ fieldset.prep legend{padding:0 4px}
         <button class="scnbtn" data-scn="C" type="button"><b>Zorgdossier ouderenzorg (ECD)</b><span>Export per locatie. Bevat tijden in een computerformaat, regels zonder cliënt en verblijf zonder einddatum.</span></button>
       </div>
       <p class="small muted">Deze oefenbestanden zijn verzonnen. Ze lijken niet op de bestanden van een echte leverancier.</p>
-      <label class="small" for="ownFiles">Of open je eigen exportbestanden van deze computer (meerdere tegelijk kan). Ze worden in deze browser gelezen, niet geüpload.</label>
-      <input type="file" id="ownFiles" multiple accept=".csv,.txt,text/csv">
+      <p class="small">Of open je eigen exportbestanden van deze computer (meerdere tegelijk kan). Ze worden in deze browser gelezen, niet geüpload.</p>
+      <div class="row"><label class="btn" for="ownFiles" style="cursor:pointer">Open bestanden van deze computer</label><input type="file" id="ownFiles" multiple accept=".csv,.txt,text/csv" style="position:absolute;left:-9999px"></div>
       <div id="srcOverview"></div>
     </div>
 
@@ -510,6 +512,7 @@ fieldset.prep legend{padding:0 4px}
 
     <div class="card">
       <h3>Waar de gegevens heen gaan</h3>
+      <p class="small muted diagram-hint">Schuif het schema opzij om alles te zien.</p>
       <div class="diagram">
         <svg viewBox="0 0 760 300" role="img" aria-labelledby="dgTitle dgDesc">
           <title id="dgTitle">Hoe gegevens door AccessGuard gaan</title>
@@ -2814,7 +2817,7 @@ $('#sources').addEventListener('click',async e=>{const b=e.target.closest('[data
     $('#dataNote').textContent='Eigen bestanden geladen voor: '+Object.entries(meta).filter(([,m])=>m.src==='file').map(([x])=>SCHEMA[x].label).join(', ')+'. Overige bronnen zijn demodata.'+(r.dropped?' '+r.dropped+' regels zonder geldige datum overgeslagen.':'');
     await runChecks()}catch(err){alertMsg(k,err.message)}});
 $('#btnDemo').addEventListener('click',()=>loadDemo(+$('#demoDays').value));
-$('#scnList').addEventListener('click',e=>{const b=e.target.closest('.scnbtn');if(b)chooseSource(b.dataset.scn,b.querySelector('b').textContent)});
+$('#scnList').addEventListener('click',e=>{const b=e.target.closest('.scnbtn');if(b){trailOpen([],'oefen');chooseSource(b.dataset.scn,b.querySelector('b').textContent)}});
 $('#ownFiles').addEventListener('change',async e=>{const fl=[...e.target.files];if(!fl.length)return;trailOpen(fl,'bron');const texts=await Promise.all(fl.map(f=>f.text().then(text=>({name:f.name,text}))));chooseSource(null,'Eigen exports ('+fl.length+' bestanden)',texts)});
 $('#btnAgent').addEventListener('click',runAgent);
 $('#btnLib').addEventListener('click',libOnly);
