@@ -1,4 +1,4 @@
-<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; worker-src blob: 'self'; connect-src 'self'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; manifest-src 'none'"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>AccessGuard</title>
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; worker-src blob:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; manifest-src 'none'"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>AccessGuard</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: één werkkolom, tabbladen per stap (bronnen → controles → signalen → rapport → sleutel → veiligheid), dossierachtige tabellen.
@@ -315,8 +315,8 @@ fieldset.prep legend{padding:0 4px}
     <p class="demo-note" id="pocBack" hidden>Je koppelt de gegevens van je proefperiode. Na het goedkeuren ga je vanzelf terug. <button class="linkbtn" data-goto="poc">Terug naar de proefperiode</button></p>
     <div class="prose">
       <h2>Bron koppelen</h2>
-      <p class="lead">Hier koppel je een nieuw EPD of ECD. De assistent bekijkt hoe de exportbestanden zijn opgebouwd. Daarna maakt hij een koppeling, test die en laat zien of de kwaliteit goed genoeg is.</p>
-      <p class="small muted">De assistent is een AI-model. Hij ziet <b>geen namen, nummers of dossiers</b>. Hij krijgt alleen een beschrijving van de kolommen en tellingen. Je kunt hieronder precies lezen wat hij te zien kreeg. Werkt de AI niet in deze versie, zoals op de website, dan doet een demo-assistent hetzelfde met vaste regels, zonder AI.</p>
+      <p class="lead">Hier koppel je een nieuw EPD of ECD. AccessGuard bekijkt hoe de exportbestanden zijn opgebouwd, maakt zelf een koppeling, test die en laat zien of de kwaliteit goed genoeg is.</p>
+      <p class="small muted">Het koppelen gebeurt helemaal op deze computer, zonder AI. AccessGuard gebruikt vaste regels en het gedrag in de data: welke codes in meerdere bestanden voorkomen, wie welke patiënten bekijkt, wanneer een handeling voorkomt. Elke beslissing krijgt het bewijs erbij. Twijfelt hij, dan vraagt hij het jou. Er gaat niets naar buiten.</p>
     </div>
 
     <div class="card">
@@ -333,15 +333,14 @@ fieldset.prep legend{padding:0 4px}
     </div>
 
     <div class="card">
-      <div class="head"><h3>Stap 2. Laat de assistent de koppeling maken</h3><span class="tag" id="agentTag"></span></div>
+      <div class="head"><h3>Stap 2. Laat AccessGuard de koppeling maken</h3><span class="tag" id="agentTag"></span></div>
       <div class="row">
-        <button class="btn primary" id="btnAgent" type="button" disabled>Start de assistent</button>
-        <button class="btn" id="btnDemoAgent" type="button" disabled hidden>Demo-assistent (nagebootst)</button>
+        <button class="btn primary" id="btnDemoAgent" type="button" disabled>Automatisch koppelen</button>
+        <button class="btn" id="btnAgent" type="button" disabled hidden>AI-assistent (alleen in Claude)</button>
         <button class="btn" id="btnLib" type="button" disabled>Gebruik een bestaande koppeling</button>
         <button class="btn" id="btnStop" type="button" hidden>Stop</button>
         <span class="busy" id="agentState">Kies eerst een bron.</span>
       </div>
-      <div id="llmBox"></div>
       <div id="aiPreview"></div>
       <div id="reportBox"></div>
       <ol class="feed" id="feed"></ol>
@@ -966,7 +965,7 @@ function genScenario(id){
 
 function libFingerprint(tables){return Object.values(tables).flatMap(t=>t.headers.map(h=>h.toLowerCase()))}
 
-/* ---------- Koppelen met vaste regels (demo-assistent, zonder AI) ---------- */
+/* ---------- Automatisch koppelen: vaste regels en gedrag in de data, zonder AI ---------- */
 function autoRecipe(){
   const steps=[],tabs=Object.entries(SRC).map(([n,t])=>({n,t,prof:profile(t)}));
   if(tabs.length<3)throw new Error('Er zijn minstens drie bestanden nodig: inzagelog, medewerkers en zorgcontacten.');
@@ -1406,7 +1405,7 @@ async function cspProbe(){
   await new Promise(r=>setTimeout(r,80));document.removeEventListener('securitypolicyviolation',h);
   CSP.active=hit;return hit;
 }
-function cspText(){return CSP.active?(CSP.self?'Aan. De browser weigert elke verbinding naar een andere partij; alleen het eigen adres van AccessGuard is bereikbaar, om het lokale taalmodel op te halen. Dat staat in de beveiligingsregels van deze pagina (Content Security Policy) en is getest.':'Aan. De browser weigert elke verbinding naar buiten. Dat staat in de beveiligingsregels van deze pagina (Content Security Policy) en is getest.'):CSP.strict?'Ingesteld, maar de test bevestigde het niet.':'Niet actief in deze weergave. De omgeving waarin de app nu draait bepaalt de regels. In de zelfstandige versie staat de slotbout aan.'}
+function cspText(){return CSP.active?(CSP.self?'Aan. De browser weigert elke verbinding naar een andere partij; alleen het eigen adres van AccessGuard is bereikbaar. Dat staat in de beveiligingsregels van deze pagina (Content Security Policy) en is getest.':'Aan. De browser weigert elke verbinding naar buiten. Dat staat in de beveiligingsregels van deze pagina (Content Security Policy) en is getest.'):CSP.strict?'Ingesteld, maar de test bevestigde het niet.':'Niet actief in deze weergave. De omgeving waarin de app nu draait bepaalt de regels. In de zelfstandige versie staat de slotbout aan.'}
 async function runSelfChecks(){
   const out=[];
   const add=(ok,title,why)=>out.push({ok,title,why});
@@ -1849,8 +1848,7 @@ function aiPreviewHtml(sv){
     '<p class="small">Van <b>'+hid+'</b> van de '+tot+' kolommen gaat geen enkele waarde mee, alleen de beschrijving. Bij <b>'+wv+'</b> keuzelijsten gaan de mogelijke waarden mee, zoals soorten handelingen en afdelingsnamen. Kolommen met namen, inlognamen, nummers of datums worden altijd afgeschermd. Na afloop vergelijkt AccessGuard alles wat verstuurd is met de nummers in je bestanden. Je ziet de uitkomst hieronder en onder Veiligheid.</p>'+
     rows+'<p class="small muted">Dit is precies de beschrijving die de assistent krijgt. De volledige tekst zie je onder "Wat kreeg de assistent te zien?".</p></div>';
 }
-document.addEventListener('click',e=>{if(e.target&&e.target.id==='btnLlm')llmLoad()});
-async function renderAiPreview(){renderLlm();REP.open=false;REP.draft=null;setTimeout(renderReportBox,0);try{const sv=await call('survey');asst.preview=sv;$('#aiPreview').innerHTML=aiPreviewHtml(sv)}catch(_){$('#aiPreview').innerHTML=''}}
+async function renderAiPreview(){REP.open=false;REP.draft=null;setTimeout(renderReportBox,0);if(aiAvail==null)await checkAi();try{const sv=await call('survey');asst.preview=sv;$('#aiPreview').innerHTML=aiAvail?aiPreviewHtml(sv):''}catch(_){$('#aiPreview').innerHTML=''}}
 function renderOverview(ov){
   $('#srcOverview').innerHTML=trailHtml('bron')+'<div class="srcov">'+ov.tabellen.map(t=>'<div><b>'+esc(t.tabel)+'</b> · '+nf(t.regels)+' regels<br><span class="muted">'+esc(t.kolommen.join(' · '))+'</span></div>').join('')+'</div>';
 }
@@ -1860,7 +1858,7 @@ async function chooseSource(id,label,files){
   $('#agentState').textContent='Bestanden inlezen…';
   try{asst.overview=id?await call('scn_load',{id}):await call('scn_files',{files});asst.label=label;
     renderOverview(asst.overview);resetAgentUi();await renderAiPreview();
-    $('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#btnDemoAgent').disabled=false;if(aiAvail==null)await checkAi();$('#agentState').textContent=aiAvail===false?'Klaar. De AI-assistent werkt niet in deze versie; gebruik de demo-assistent of een bestaande koppeling.':'Klaar om te starten.';$('#agentTag').textContent=label;
+    $('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#btnDemoAgent').disabled=false;if(aiAvail==null)await checkAi();$('#agentState').textContent='Klaar om te koppelen.';$('#agentTag').textContent=label;
     log('Bron gekozen om te koppelen',label);
   }catch(e){$('#agentState').textContent='Inlezen lukte niet: '+e.message}
 }
@@ -1916,93 +1914,39 @@ const AGENT_TOOLS=[
      const res={ontvangen:true,klaar:r.klaar,poorten:r.poorten};seenAdd('Resultaat submit_recipe',JSON.stringify(res));return res}}
 ];
 
-/* ---------- Lokaal taalmodel (WebLLM, draait in deze browser) ---------- */
-const LLM={engine:null,state:'uit',pct:0,text:'',err:null,model:'Qwen2.5-0.5B-Instruct (4-bit)'};
-const llmHosted=()=>/\/app\/?(index\.html)?$/.test(location.pathname);
-const llmGpu=()=>!!(navigator&&navigator.gpu)&&LLM.adapter!==false;
-const llmTouch=()=>/iPad|iPhone|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent));
-async function llmCheckGpu(){if(LLM.adapter!==undefined)return LLM.adapter;try{const a=navigator.gpu?await navigator.gpu.requestAdapter():null;LLM.adapter=!!a;LLM.f16=!!(a&&a.features&&a.features.has('shader-f16'))}catch(_){LLM.adapter=false}renderLlm();return LLM.adapter}
-function llmBoxHtml(){
-  if(!llmHosted())return'<p class="small muted"><b>Lokaal taalmodel:</b> niet beschikbaar in deze weergave. In de zelfstandige versie kun je een klein taalmodel laden dat op je eigen computer draait.</p>';
-  if(LLM.adapter===undefined&&navigator.gpu){llmCheckGpu();return'<p class="small muted"><b>Lokaal taalmodel:</b> controleren of deze computer het kan draaien…</p>'}
-  if(!llmGpu())return'<p class="small muted"><b>Lokaal taalmodel:</b> niet beschikbaar op deze computer. Het model heeft een grafische kaart nodig die de browser via WebGPU kan gebruiken, en die is hier niet gevonden. Dat komt vaak voor op Chromebooks, tablets en werkplekken via Citrix of VDI. De koppeling werkt gewoon met vaste regels.</p>';
-  if(llmTouch()&&LLM.state!=='klaar'&&LLM.state!=='laden')return'<p class="small muted"><b>Lokaal taalmodel:</b> werkt het best op een laptop of pc. Op een tablet of telefoon is er vaak te weinig geheugen of opslag. <button class="linkbtn" type="button" id="btnLlm">Toch proberen</button></p>';
-  if(LLM.state==='klaar')return'<p class="small ok-text"><b>Lokaal taalmodel geladen:</b> '+esc(LLM.model)+'. Het draait op deze computer en helpt bij twijfelgevallen. Er gaat niets naar buiten.</p>';
-  if(LLM.state==='laden')return'<p class="small"><b>Lokaal taalmodel laden…</b> '+Math.round(LLM.pct*100)+'%</p><div class="bar" style="height:6px"><i style="width:'+Math.round(LLM.pct*100)+'%;background:var(--ok)"></i></div><p class="small muted">'+esc(LLM.text||'')+'</p>';
-  return'<div class="row"><button class="btn" type="button" id="btnLlm">Lokaal taalmodel laden</button><span class="small muted">Eenmalig ongeveer 290 MB, van het eigen adres van AccessGuard. Daarna bewaart de browser het model. Het helpt de vaste regels bij twijfel over codes en afdelingsnamen.'+(LLM.err?' <span class="err">Laden lukte niet: '+esc(LLM.err)+'</span>':'')+'</span></div>';
-}
-function renderLlm(){const b=document.getElementById('llmBox');if(b)b.innerHTML=llmBoxHtml()}
-async function llmLoad(){
-  if(LLM.state==='laden'||LLM.state==='klaar')return;
-  LLM.state='laden';LLM.err=null;LLM.pct=0;renderLlm();log('Lokaal taalmodel laden',LLM.model);
-  try{
-    const webllm=await import(new URL('lib/web-llm.js',location.href).href);
-    const base=new URL('model/',location.href).href;
-    const appConfig={model_list:[{model:base+'qwen05/',model_id:'qwen05',model_lib:base+'lib/qwen05-webgpu.wasm',low_resource_required:true,overrides:{context_window_size:4096}}]};
-    LLM.engine=await webllm.CreateMLCEngine('qwen05',{appConfig,initProgressCallback:p=>{LLM.pct=p.progress||0;LLM.text=p.text||'';renderLlm()}});
-    LLM.state='klaar';log('Lokaal taalmodel geladen',LLM.model);
-  }catch(e){LLM.state='uit';const m=String(e&&e.message||e);if(/compatible GPU|requestAdapter|WebGPU/i.test(m))LLM.adapter=false;LLM.err=/Cache\.add|quota/i.test(m)?'de browser kon het model niet bewaren, waarschijnlijk door te weinig opslagruimte':/Request failed|404|Failed to fetch|NetworkError/i.test(m)?'het model staat nog niet op de server of kon niet worden opgehaald ('+m.slice(0,80)+')':m.slice(0,160);log('Lokaal taalmodel niet geladen',LLM.err)}
-  renderLlm();
-}
-async function llmJSON(system,user,schema){
-  const r=await LLM.engine.chat.completions.create({messages:[{role:'system',content:system},{role:'user',content:user}],temperature:0,max_tokens:600,response_format:{type:'json_object',schema:JSON.stringify(schema)}});
-  return JSON.parse(r.choices[0].message.content);
-}
-async function llmActies(codes){
-  const schema={type:'object',properties:{indeling:{type:'array',items:{type:'object',properties:{code:{type:'string'},soort:{type:'string',enum:['inzage','noodtoegang','negeer']}},required:['code','soort']}}},required:['indeling']};
-  const out=await llmJSON('Je deelt codes uit een auditlog van een elektronisch patiëntendossier in. inzage = een mens bekijkt, wijzigt, print of exporteert het dossier. noodtoegang = break-the-glass, toegang via de noodknop. negeer = technische of automatische handeling zonder mens, zoals vooraf laden of sessiebeheer. Antwoord alleen met JSON.','Codes: '+JSON.stringify(codes),schema);
-  const ok={};(out.indeling||[]).forEach(x=>{if(codes.includes(x.code)&&['inzage','noodtoegang','negeer'].includes(x.soort))ok[x.code]=x.soort});return ok;
-}
-async function llmAfdelingen(bron,doel){
-  const schema={type:'object',properties:{koppeling:{type:'array',items:{type:'object',properties:{bron:{type:'string'},doel:{type:'string',enum:doel.concat(['geen'])}},required:['bron','doel']}}},required:['koppeling']};
-  const out=await llmJSON('Je koppelt afdelingscodes uit een zorgsysteem aan afdelingsnamen uit de personeelslijst. Kies per code de afdeling die dezelfde zorg levert, of geen als er geen past. Antwoord alleen met JSON.','Codes: '+JSON.stringify(bron)+'\nAfdelingen: '+JSON.stringify(doel),schema);
-  const ok={};(out.koppeling||[]).forEach(x=>{if(bron.includes(x.bron)&&doel.includes(x.doel))ok[x.bron]=x.doel});return ok;
-}
 let aiAvail=null;
 async function checkAi(){try{const sm=window.claude&&window.claude.use?await window.claude.use('sample'):null;if(!sm){aiAvail=false}else{const lim=await sm.limits();aiAvail=!!(lim&&lim.tools)}}catch(_){aiAvail=false}
-  $('#btnDemoAgent').hidden=aiAvail!==false;return aiAvail}
+  $('#btnAgent').hidden=!aiAvail;return aiAvail}
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function simulateAgent(){
   if(asst.running)return;
   resetAgentUi();asst.running=true;$('#btnAgent').disabled=true;$('#btnLib').disabled=true;$('#btnDemoAgent').disabled=true;
   try{
-    feedItem('',LLM.state==='klaar'?'Lokale assistent gestart':'Demo-assistent gestart',LLM.state==='klaar'?'Vaste regels, aangevuld met een klein taalmodel dat op deze computer draait. Er wordt niets verstuurd.':'Nagebootst: vaste regels in plaats van een AI-model. Er wordt niets verstuurd.');
-    $('#agentState').textContent='De demo-assistent is bezig…';
+    feedItem('','Automatisch koppelen gestart','Vaste regels en het gedrag in de data, op deze computer. Er wordt niets verstuurd.');
+    $('#agentState').textContent='Bezig met koppelen…';
     const sv=asst.preview||await call('survey');
     const nCol=sv.tabellen.reduce((a,t)=>a+t.kolommen.length,0);
-    feedItem('','Bestanden bekeken op dit apparaat',sv.tabellen.length+' bestanden, '+nCol+' kolommen. Alleen de beschrijving wordt gebruikt, niet de inhoud.');
-    seenAdd('Beschrijving die naar een AI-model zou gaan (in deze demo niet verstuurd)',JSON.stringify(sv,null,1));
+    feedItem('','Bestanden bekeken op dit apparaat',sv.tabellen.length+' bestanden, '+nCol+' kolommen.');
     await pause(500);
     const a=await call('auto');
     for(const st of a.stappen){feedItem('',st.split(':')[0],st.includes(':')?st.slice(st.indexOf(':')+1).trim():'');await pause(350)}
     let rc=a.recept;
     const tw=a.twijfel||{acties:[],afdelingen:[],doelafdelingen:[]};
-    if((tw.acties.length||tw.afdelingen.length)&&LLM.state==='klaar'){
-      feedItem('','Lokaal taalmodel helpt bij twijfel','Het model draait op deze computer. Het krijgt alleen de codes en afdelingsnamen, geen gegevens.');
-      try{
-        if(tw.acties.length){const m=await llmActies(tw.acties);const ch=Object.entries(m).filter(([c,k])=>k!=='inzage');
-          ch.forEach(([c,k])=>{rc.inzagelog.inzage_acties=rc.inzagelog.inzage_acties.filter(x=>x!==c);(k==='noodtoegang'?rc.inzagelog.btg_acties:rc.inzagelog.negeer_acties).push(c)});
-          feedItem('','Handelingen beoordeeld door het model',Object.entries(m).map(([c,k])=>c+' → '+k).join(', ')||'geen antwoord');seenAdd('Vraag aan lokaal model (handelingen)',JSON.stringify(tw.acties))}
-        if(tw.afdelingen.length){const m=await llmAfdelingen(tw.afdelingen,tw.doelafdelingen);Object.assign(rc.afdeling_mapping,m);
-          const nieuw=new Set(Object.values(m));rc.breed_afdelingen=(rc.breed_afdelingen||[]).filter(x=>!nieuw.has(x));
-          feedItem('','Afdelingen gekoppeld door het model',Object.entries(m).map(([b,d])=>b+' → '+d).join(', ')||'geen passende koppeling gevonden');seenAdd('Vraag aan lokaal model (afdelingen)',JSON.stringify({codes:tw.afdelingen,afdelingen:tw.doelafdelingen}))}
-        log('Lokaal taalmodel gebruikt',tw.acties.length+' handelingen, '+tw.afdelingen.length+' afdelingen');
-      }catch(e){feedItem('q','Lokaal taalmodel gaf geen bruikbaar antwoord',String(e&&e.message||e).slice(0,120)+'. De vaste regels blijven gelden.')}
-    }else if(tw.acties.length||tw.afdelingen.length){feedItem('q','Twijfelgevallen blijven op de standaard',LLM.state==='klaar'?'':'Laad het lokale taalmodel om deze gevallen slimmer te laten beoordelen, of pas ze aan na het aftekenen.')}
+    if(tw.acties.length||tw.afdelingen.length)feedItem('q','Twijfelgevallen','Die staan nu op de standaard (handelingen tellen als inzage, onbekende afdelingen worden niet vertaald). Pas ze aan na het aftekenen, of stuur de opbouw in ter beoordeling.');
     let r=await call('dry',{recept:rc});
     feedItem(r.klaar?'ok':'q','Test van de koppeling',gateLine(r));
     const low=(r.relaties&&r.relaties.per_afdeling||[]).filter(x=>!x.breed&&x.inzages>=50&&x.met_bewijs_pct<50).slice(0,2);
     for(const x of low){
-      if(!/radiolog|apothe|pharma|spoed|emergenc|seh|laborat|anesthes/i.test(x.afdeling)){feedItem('q','Weinig zorgcontacten bij '+x.afdeling,String(x.met_bewijs_pct).replace('.',',')+'% van de inzages heeft een zorgcontact. Waarschijnlijk heet deze afdeling in het EPD anders. Lever een afdelingenlijst aan'+(LLM.state==='klaar'?'.':' of laad het lokale taalmodel.'));continue}
+      if(!/radiolog|apothe|pharma|spoed|emergenc|seh|laborat|anesthes/i.test(x.afdeling)){feedItem('q','Weinig zorgcontacten bij '+x.afdeling,String(x.met_bewijs_pct).replace('.',',')+'% van de inzages heeft een zorgcontact. Waarschijnlijk heet deze afdeling in het EPD anders. Lever een afdelingenlijst aan of stuur de opbouw in ter beoordeling.');continue}
       const ans=await askUser('Bij '+x.afdeling+' heeft maar '+String(x.met_bewijs_pct).replace('.',',')+'% van de inzages een zorgcontact. Mag deze afdeling alle patiënten zien, zoals vaak bij een spoedeisende hulp?',['Ja, mag alles zien','Nee, dat zijn signalen']);
       if(/^Ja/.test(ans)){rc.breed_afdelingen=[...new Set((rc.breed_afdelingen||[]).concat(x.afdeling))];r=await call('dry',{recept:rc});feedItem(r.klaar?'ok':'q','Opnieuw getest',gateLine(r))}
     }
     asst.final={rc,r};asst.last=r;asst.lastRecept=rc;
-    $('#agentText').hidden=false;$('#agentText').textContent='Ik heb de inzagelog, de medewerkers en de zorgcontacten aan elkaar gekoppeld via gedeelde codes. Soorten handelingen en afdelingsnamen zijn vertaald en systeemaccounts zijn uitgesloten. '+(r.klaar?'Alle kwaliteitseisen zijn gehaald.':'Nog niet alle kwaliteitseisen zijn gehaald; bekijk de test hieronder.')+' Controleer de koppeling en keur hem goed. ('+(LLM.state==='klaar'?'Gedaan met vaste regels en een lokaal taalmodel op deze computer.':'Demo: gedaan met vaste regels, niet met AI.')+')';
-    asst.lastTwijfel=a.twijfel;renderPaspoort(r,rc,{bron:'demo-assistent',final:true});renderReportBox();
+    $('#agentText').hidden=false;$('#agentText').textContent='Ik heb de inzagelog, de medewerkers en de zorgcontacten aan elkaar gekoppeld via gedeelde codes. Soorten handelingen en afdelingsnamen zijn vertaald en systeemaccounts zijn uitgesloten. '+(r.klaar?'Alle kwaliteitseisen zijn gehaald.':'Nog niet alle kwaliteitseisen zijn gehaald; bekijk de test hieronder.')+' Controleer de koppeling en keur hem goed.';
+    asst.lastTwijfel=a.twijfel;renderPaspoort(r,rc,{bron:'automatisch koppelen',final:true});renderReportBox();
     $('#agentState').textContent='Klaar. Bekijk de kwaliteitscheck en keur de koppeling goed.';
-    log('Demo-assistent klaar',gateLine(r));
-  }catch(e){$('#agentState').textContent='De demo-assistent kon geen koppeling maken: '+e.message;feedItem('q','Geen koppeling',e.message);REP.open=true;renderReportBox()}
+    log('Automatisch gekoppeld',gateLine(r));
+  }catch(e){$('#agentState').textContent='Automatisch koppelen lukte niet: '+e.message;feedItem('q','Geen koppeling',e.message);REP.open=true;renderReportBox()}
   finally{asst.running=false;$('#btnAgent').disabled=false;$('#btnLib').disabled=false;$('#btnDemoAgent').disabled=false}
 }
 async function runAgent(){
@@ -2695,7 +2639,7 @@ async function pocHandoffStart(){
   location.hash='assistent';show();
   await chooseSource(pocSrc.files?null:pocSrc.scn,pocSrc.files?'Bestanden uit de proefperiode':'Oefenexport',pocSrc.files||null);
   await libOnly();
-  if(!asst.final){if(aiAvail==null)await checkAi();if(aiAvail){feedItem('','De assistent maakt een nieuwe koppeling','Dit duurt meestal 30 tot 90 seconden.');await runAgent()}else await simulateAgent()}
+  if(!asst.final)await simulateAgent();
 }
 async function pocRedry(){pocDry=await call('dry',{recept:pocRecept});org.poc.kwaliteit.poorten=pocDry.poorten.map(g=>({naam:g.naam,ok:g.ok,waarde:g.waarde,norm:g.norm}));saveOrgs();renderPoc()}
 
